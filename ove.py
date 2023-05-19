@@ -59,25 +59,79 @@ def handler_from(directory):
                 {'__init__': _init, 'directory': directory})
 
 
+def validate_pixels(args):
+    if args.width is not None and args.height is not None and args.x is not None and args.y is not None:
+        return "validated"
+    elif args.width is None and args.height is None and args.x is None and args.y is None:
+        return "empty"
+    else:
+        return "error"
+
+
+def validate_grid(args):
+    if args.row is not None and args.col is not None:
+        return "validated"
+    elif args.row is None and args.col is None:
+        return "empty"
+    else:
+        return "error"
+
+
+def validate_flex(args):
+    def helper(x):
+        return x is not None and hasattr(x, "__len__") and len(x) == 2
+
+    if helper(args.from_) and helper(args.to_) and args.to_[0] > args.from_[0] and args.to_[1] > args.from_[1]:
+        return "validated"
+    elif args.from_ is None and args.to_ is None:
+        return "empty"
+    else:
+        return "error"
+
+
 def validate_args(args):
     if args.cell_no is None:
         raise OVEException("No id provided")
-    cur_row = args.row - 1 if args.row is not None else math.floor((args.cell_no - 1) / config["rows"])
-    cur_col = args.col - 1 if args.col is not None else (args.cell_no - 1) % config["cols"]
 
-    if not ((
-                    args.width is not None and args.height is not None and args.row is None and args.col is None and args.x is not None and args.y is not None) or (
-                    args.row is not None and args.col is not None and args.x is None and args.y is None and args.width is None and args.height is None) or (
-                    args.width is None and args.height is None and args.x is None and args.y is None and args.row is None and args.col is None)):
+    validation = validate_flex(args), validate_pixels(args), validate_grid(args)
+
+    if validation.count("validated") != 1 and validation.count("empty") != len(validation):
         raise OVEException("Invalid cell config")
 
-    if args.width is None and args.height is None and args.x is None and args.y is None and args.row is None and args.col is None:
+    if validation.count("empty") == len(validation):
+        return "empty"
+    return ["flex", "pixel", "grid"][validation.index("validated")]
+
+
+def get_position(args, mode):
+    if mode == "empty":
+        section_width, section_height = math.floor(config["geometry"]["w"] / config["rows"]), math.floor(
+            config["geometry"]["h"] / config["cols"])
+        cur_row, cur_col = math.floor((args.cell_no - 1) / config["rows"]), (args.cell_no - 1) % config["cols"]
+
         if cur_row >= config["rows"]:
             raise OVEException("Unable to display cell - limit reached")
-    return cur_row, cur_col
+
+        return {"x": cur_col * section_width, "y": cur_row * section_height, "w": section_width, "h": section_height}
+    elif mode == "grid":
+        section_width, section_height = math.floor(config["geometry"]["w"] / config["rows"]), math.floor(
+            config["geometry"]["h"] / config["cols"])
+        return {"x": (args.col - 1) * section_width, "y": (args.row - 1) * section_height,
+                "w": section_width, "h": section_height}
+    elif mode == "pixel":
+        return {"x": args.x, "y": args.y, "w": args.width, "h": args.height}
+    elif mode == "flex":
+        tlc, blc, trc, brc = args.from_[0] - 1, args.from_[1] - 1, args.to_[0] - 1, args.to_[1] - 1
+        x_span, y_span = trc - tlc, brc - blc
+        row_width, col_width = math.floor(config["geometry"]["w"] / config["rows"]), math.floor(
+            config["geometry"]["h"] / config["cols"])
+        section_width, section_height = row_width * x_span, col_width * y_span
+        return {"x": tlc * row_width, "y": blc * col_width, "w": section_width, "h": section_height}
+    else:
+        raise OVEException(f"Unknown display mode: {mode}")
 
 
-def get_geometry(args):
+def get_geometry(args, cur_row, cur_col):
     section_width = args.width if args.width is not None else math.floor(config["geometry"]["w"] / config["rows"])
     section_height = args.height if args.height is not None else math.floor(
         config["geometry"]["h"] / config["cols"])
@@ -358,14 +412,16 @@ def load_ipython_extension(ipython):
     @magic_arguments.argument("--height", "-h", type=int, default=None, nargs="?")
     @magic_arguments.argument("--x", "-x", type=int, default=None, nargs="?")
     @magic_arguments.argument("--y", "-y", type=int, default=None, nargs="?")
+    @magic_arguments.argument("--from", "-f", type=int, default=None, nargs=2, dest="from_")
+    @magic_arguments.argument("--to", "-t", type=int, default=None, nargs=2, dest="to_")
     @register_cell_magic
     def tee(line, cell):
         global config
 
         args = magic_arguments.parse_argstring(tee, line)
 
-        cur_row, cur_col = validate_args(args)
-        geometry = get_geometry(args)
+        mode = validate_args(args)
+        geometry = get_position(args, mode)
         io, output = get_output(cell)
 
         injected_outputs = []
@@ -383,8 +439,7 @@ def load_ipython_extension(ipython):
                 elif "image/svg+xml" in k:
                     section = handle_data(v, args.cell_no, geometry, i, j, len(output), len(o.items()), data_type="svg")
                 else:
-                    print(k)
-                    print(v)
+                    print(f"Unhandled data type: {k}")
 
                 if section is not None:
                     section_id = load_section(args.cell_no, i, j, section)
@@ -407,7 +462,7 @@ def load_ipython_extension(ipython):
     @magic_arguments.argument("--cols", "-c", type=int, default="2", nargs="?")
     @magic_arguments.argument("--env", "-e", type=str, default=".env", nargs="?")
     @magic_arguments.argument("--out", "-o", type=str, default=".ove", nargs="?")
-    @magic_arguments.argument("--remove", "-rm", type=bool, default=False, nargs="?")
+    @magic_arguments.argument("--remove", "-rm", type=bool, default=True, nargs="?")
     @register_line_magic
     def ove_config(line):
         args = magic_arguments.parse_argstring(ove_config, line)
