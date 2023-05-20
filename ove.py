@@ -152,8 +152,7 @@ def get_output(cell):
     """
     with capture_output(True, True, True) as io:
         get_ipython().run_cell(cell)
-    return io, [{k: v for k, v in output.data.items() if "text/plain" not in k and "text/latex" not in k} for output in
-                io.outputs]
+    return io, [{k: v for k, v in output.data.items() if "text/plain" not in k} for output in io.outputs]
 
 
 def format_dataframe(html):
@@ -298,11 +297,12 @@ def get_ove_app(data_type):
         raise OVEException(f"Unknown data type: {data_type}")
 
 
-def handle_data(data, cell_no, geometry, i, j, i_total, j_total, data_type):
+def handle_data(data, cell_no, geometry, i, i_total, data_type):
     if data_type == "html" and "dataframe" in data:
         data = format_dataframe(data)
 
-    filename = f"cell-{cell_no}-{i}-{j}.{data_type}"
+    split_mode = "width" if geometry["w"] > geometry["h"] else "height"
+    filename = f"cell-{cell_no}-{i}.{data_type}"
     file_mode = "w"
     file_data = data
     ove_app = get_ove_app(data_type)
@@ -313,8 +313,14 @@ def handle_data(data, cell_no, geometry, i, j, i_total, j_total, data_type):
 
     to_file(filename, file_data, file_mode)
 
-    width = math.floor(geometry["w"] / j_total)
-    height = math.floor(geometry["h"] / i_total)
+    if split_mode == "width":
+        width = math.floor(geometry["w"] / i_total)
+        x = geometry["x"] + (i * width)
+        y, height = geometry["y"], geometry["h"]
+    else:
+        height = math.floor(geometry["h"] / i_total)
+        y = geometry["y"] + (i * height)
+        width, x = geometry["w"], geometry["x"]
 
     return {
         "app": {
@@ -327,8 +333,8 @@ def handle_data(data, cell_no, geometry, i, j, i_total, j_total, data_type):
         },
         "h": height,
         "w": width,
-        "x": geometry["x"] + (j * width),
-        "y": geometry["y"] + (i * height),
+        "x": x,
+        "y": y,
         "space": config["space"]
     }
 
@@ -338,12 +344,19 @@ def to_file(filename: str, obj, file_mode: str):
         f.write(obj)
 
 
-def load_section(cell_no, i, j, section):
-    section_id = config["sections"].get(f"{cell_no}-{i}-{j}", None)
+def load_section(cell_no, i, section):
+    section_id = config["sections"].get(f"{cell_no}-{i}", None)
     if section_id is not None:
-        requests.delete(f"{config['OVE_CORE']}/sections/{section_id['id']}")
+        if config["mode"] == "production":
+            requests.delete(f"{config['OVE_CORE']}/sections/{section_id['id']}")
+        else:
+            print(f"DELETE: {config['OVE_CORE']}/sections/{section_id['id']}")
 
-    return requests.post(f"{config['OVE_CORE']}/section", json=section).json()["id"]
+    if config["mode"] == "production":
+        return requests.post(f"{config['OVE_CORE']}/section", json=section).json()["id"]
+    else:
+        print(f"POST: {config['OVE_CORE']}/section - {section}")
+        return len(config["sections"])
 
 
 def load_server(remove):
@@ -364,16 +377,22 @@ def load_server(remove):
 
 def load_config(args):
     global config
+    if args.mode != "production" and args.mode != "development":
+        raise OVEException(f"Unknown mode: {args.mode}")
     config = {
         "space": args.space.replace("\"", ""),
         "rows": args.rows,
         "cols": args.cols,
         "env": args.env.replace("\"", ""),
         "out": args.out.replace("\"", ""),
-        "sections": {}
+        "sections": {},
+        "mode": args.mode
     }
     config = {**{k: v for k, v in dotenv_values(config["env"]).items() if "OVE_" in k}, **config}
-    config["geometry"] = requests.get(f"{config['OVE_CORE']}/spaces/{config['space']}/geometry").json()
+    if config["mode"] == "production":
+        config["geometry"] = requests.get(f"{config['OVE_CORE']}/spaces/{config['space']}/geometry").json()
+    else:
+        config["geometry"] = {"w": 3840, "h": 2160}
 
 
 def format_project():
@@ -428,28 +447,31 @@ def load_ipython_extension(ipython):
 
         for i, o in enumerate(output):
             injected_outputs.append(io._outputs[i])
-            for j, (k, v) in enumerate(o.items()):
+            for k, v in o.items():
                 if "text/html" in k:
-                    section = handle_data(v, args.cell_no, geometry, i, j, len(output), len(o.items()),
-                                          data_type="html")
+                    section = handle_data(v, args.cell_no, geometry, i, len(output), data_type="html")
                 elif "image/png" in k:
-                    section = handle_data(v, args.cell_no, geometry, i, j, len(output), len(o.items()), data_type="png")
+                    section = handle_data(v, args.cell_no, geometry, i, len(output), data_type="png")
                 elif "image/jpeg" in k:
-                    section = handle_data(v, args.cell_no, geometry, i, j, len(output), len(o.items()), data_type="jpg")
+                    section = handle_data(v, args.cell_no, geometry, i, len(output), len(o.items()), data_type="jpg")
                 elif "image/svg+xml" in k:
-                    section = handle_data(v, args.cell_no, geometry, i, j, len(output), len(o.items()), data_type="svg")
+                    section = handle_data(v, args.cell_no, geometry, i, len(output), data_type="svg")
                 else:
                     print(f"Unhandled data type: {k}")
 
                 if section is not None:
-                    section_id = load_section(args.cell_no, i, j, section)
-                    config["sections"][f"{args.cell_no}-{i}-{j}"] = {
+                    section_id = load_section(args.cell_no, i, section)
+                    config["sections"][f"{args.cell_no}-{i}"] = {
                         "id": section_id,
                         "data": section
                     }
 
-                    injected_outputs.append(
-                        get_injected(f"{section['app']['url']}/control.html?oveSectionId={section_id}"))
+                    if config["mode"] == "production":
+                        injected_outputs.append(
+                            get_injected(f"{section['app']['url']}/control.html?oveSectionId={section_id}"))
+                    else:
+                        print(f"Injecting: {section['app']['states']['load']['url']}")
+                        injected_outputs.append(get_injected(section["app"]["states"]["load"]["url"]))
 
         to_project()
         io._outputs = injected_outputs
@@ -463,6 +485,7 @@ def load_ipython_extension(ipython):
     @magic_arguments.argument("--env", "-e", type=str, default=".env", nargs="?")
     @magic_arguments.argument("--out", "-o", type=str, default=".ove", nargs="?")
     @magic_arguments.argument("--remove", "-rm", type=bool, default=True, nargs="?")
+    @magic_arguments.argument("--mode", "-m", type=str, default="production", nargs="?")
     @register_line_magic
     def ove_config(line):
         args = magic_arguments.parse_argstring(ove_config, line)
@@ -471,4 +494,7 @@ def load_ipython_extension(ipython):
 
         load_config(args)
         load_server(args.remove)
-        requests.delete(f"{config['OVE_CORE']}/sections?space={config['space']}")
+        if config["mode"] == "production":
+            requests.delete(f"{config['OVE_CORE']}/sections?space={config['space']}")
+        else:
+            print(f"DELETE: {config['OVE_CORE']}/sections?space={config['space']}")
