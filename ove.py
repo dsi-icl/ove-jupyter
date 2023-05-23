@@ -126,17 +126,17 @@ def validate_args(args):
 
 def get_position(args, mode):
     if mode == "empty":
-        section_width, section_height = math.floor(config["geometry"]["w"] / config["rows"]), math.floor(
-            config["geometry"]["h"] / config["cols"])
-        cur_col, cur_row = math.floor((args.cell_no - 1) / config["cols"]), (args.cell_no - 1) % config["cols"]
+        section_width, section_height = math.floor(config["geometry"]["w"] / config["cols"]), math.floor(
+            config["geometry"]["h"] / config["rows"])
+        cur_col, cur_row = math.floor((args.cell_no - 1) / config["rows"]), (args.cell_no - 1) % config["rows"]
 
-        if cur_row >= config["rows"]:
+        if cur_col >= config["cols"]:
             raise OVEException("Unable to display cell - limit reached")
 
         return {"x": cur_col * section_width, "y": cur_row * section_height, "w": section_width, "h": section_height}
     elif mode == "grid":
-        section_width, section_height = math.floor(config["geometry"]["w"] / config["rows"]), math.floor(
-            config["geometry"]["h"] / config["cols"])
+        section_width, section_height = math.floor(config["geometry"]["w"] / config["cols"]), math.floor(
+            config["geometry"]["h"] / config["rows"])
         return {"x": (args.col - 1) * section_width, "y": (args.row - 1) * section_height,
                 "w": section_width, "h": section_height}
     elif mode == "pixel":
@@ -144,10 +144,10 @@ def get_position(args, mode):
     elif mode == "flex":
         tlc, blc, trc, brc = args.from_[0] - 1, args.from_[1] - 1, args.to_[0] - 1, args.to_[1] - 1
         x_span, y_span = trc - tlc, brc - blc
-        row_width, col_width = math.floor(config["geometry"]["w"] / config["rows"]), math.floor(
-            config["geometry"]["h"] / config["cols"])
-        section_width, section_height = row_width * x_span, col_width * y_span
-        return {"x": tlc * row_width, "y": blc * col_width, "w": section_width, "h": section_height}
+        cell_width, cell_height = math.floor(config["geometry"]["w"] / config["cols"]), math.floor(
+            config["geometry"]["h"] / config["rows"])
+        section_width, section_height = cell_width * x_span, cell_height * y_span
+        return {"x": tlc * cell_width, "y": blc * cell_height, "w": section_width, "h": section_height}
     else:
         raise OVEException(f"Unknown display mode: {mode}")
 
