@@ -391,6 +391,15 @@ def format_latex(latex):
     return outline.replace("%%replace%%", latex)
 
 
+def format_html(html):
+    html_format = "<!DOCTYPE html>\n<html lang=\"en\">"
+    if len(html) > len(html_format) and html[:len(html_format)] == html_format:
+        return html
+
+    outline = read_file(f"{get_dir()}/assets/html_format.html")
+    return outline.replace("%%replace%%", html)
+
+
 def get_source(data):
     return re.search(r"src=\"([^\"]+)\"", data).group(1)
 
@@ -405,6 +414,9 @@ def get_section(v, cell_no, geometry, i, i_total, split_mode, data_type, metadat
         v = get_source(v)
     elif data_type == "dataframe":
         v = format_dataframe(v)
+        data_type = "html"
+    elif data_type == "html":
+        v = format_html(v)
         data_type = "html"
     elif data_type == "latex":
         v = format_latex(v)
