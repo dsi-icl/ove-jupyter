@@ -7,53 +7,21 @@ import base64
 import shutil
 import markdown
 import requests
-import http.server
-import socketserver
 import urllib.request
 import multiprocessing
-
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from socketserver import ThreadingMixIn
-import threading
 
 from IPython import get_ipython
 from dotenv import dotenv_values
 from IPython.core import magic_arguments
+from ove.file_server import create_server
 from IPython.display import IFrame, Latex, display
 from IPython.lib.latextools import latex_to_png, latex_to_html
 from IPython.utils.capture import capture_output, CapturedIO
 from IPython.core.displaypub import CapturingDisplayPublisher
 from IPython.core.magic import register_cell_magic, register_line_magic
 
-
-def handle_markdown_css():
-    if os.path.exists(f"{config['out']}/markdown-github.css"):
-        return
-    else:
-        shutil.copy("./markdown-github.css", f"{config['out']}/markdown-github.css")
-
-
-class OVEException(Exception):
-    def __init__(self, message):
-        super().__init__(f"OVE Error: {message}")
-
-
-class Handler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=kwargs["directory"], **kwargs)
-
-    def end_headers(self) -> None:
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "*")
-        self.send_header("Access-Control-Allow-Headers", "*")
-        http.server.SimpleHTTPRequestHandler.end_headers(self)
-
-    def log_message(self, format: str, *args) -> None:
-        pass
-
-
-class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
-    """Handle requests in a separate thread."""
+config = {}
+server_thread = None
 
 
 def mkdir(dir_):
@@ -61,23 +29,16 @@ def mkdir(dir_):
         os.makedirs(dir_)
 
 
-config = {}
-server_thread = None
+def handle_markdown_css():
+    if os.path.exists(f"{config['out']}/markdown-github.css"):
+        return
+    else:
+        shutil.copy("./assets/markdown-github.css", f"{config['out']}/markdown-github.css")
 
 
-def create_server(port, out):
-    server = ThreadedHTTPServer(("", port), handler_from(out))
-    server.serve_forever()
-
-
-def handler_from(directory):
-    def _init(self, *args, **kwargs):
-        return http.server.SimpleHTTPRequestHandler.__init__(self, *args, directory=self.directory,
-                                                             **kwargs)
-
-    return type(f'HandlerFrom<{directory}>',
-                (Handler,),
-                {'__init__': _init, 'directory': directory})
+class OVEException(Exception):
+    def __init__(self, message):
+        super().__init__(f"OVE Error: {message}")
 
 
 def validate_pixels(args):
@@ -480,7 +441,7 @@ def format_dataframe(html):
                 scroll-behavior: auto !important;
             }
         }
-        
+
         .dataframe {
             font-family: Arial, Helvetica, sans-serif;
             border-collapse: collapse;
@@ -496,7 +457,7 @@ def format_dataframe(html):
         .dataframe tr:nth-child(even) {
             background-color: #f2f2f2;
         }
-        
+
         .dataframe tr:nth-child(odd) {
             background-color: #ffffff
         }
@@ -580,10 +541,9 @@ def write_media(data, cell_no, i):
         return data
     if "." not in data:
         raise OVEException("Raw data source not supported")
-    raise OVEException("Local files not supported")
-    # filename = f"cell-{cell_no}-{i}.{data.split('.')[-1]}"
-    # urllib.request.urlretrieve(f"file://{os.path.abspath(data)}", f"{config['out']}/{filename}")
-    # return f"{config['OVE_HOST']}:8000/{filename}"
+    filename = f"cell-{cell_no}-{i}.{data.split('.')[-1]}"
+    urllib.request.urlretrieve(f"file://{os.path.abspath(data)}", f"{config['out']}/{filename}")
+    return f"{config['OVE_HOST']}:8000/{filename}"
 
 
 def write_data(data, cell_no, i, data_type, ove_app):
@@ -677,7 +637,8 @@ def load_server(remove):
     if server_thread is not None:
         server_thread.terminate()
 
-    server_thread = multiprocessing.Process(target=create_server, args=(int(config["OVE_PORT"]), config["out"]))
+    server_thread = multiprocessing.Process(target=create_server,
+                                            args=(int(config["OVE_PORT"]), config["out"], config["env"], True))
     server_thread.start()
 
 
@@ -737,10 +698,13 @@ def format_cell_name(cell_name: str):
 def get_app_url(section):
     return section["data"]["app"]["url"]
 
+
 def create_controller_nav_content():
     if len(config["sections"]) == 0:
         return ""
-    return "\n\t\t\t".join([f"<li><button onclick=\"changeContent('{get_app_url(section)}/control.html?oveSectionId={section['id']}')\">Cell {format_cell_name(k)} - {get_app_url(section).split('/')[-1]}</button></li>" for k, section in config["sections"].items()])
+    return "\n\t\t\t".join([
+                               f"<li><button onclick=\"changeContent('{get_app_url(section)}/control.html?oveSectionId={section['id']}')\">Cell {format_cell_name(k)} - {get_app_url(section).split('/')[-1]}</button></li>"
+                               for k, section in config["sections"].items()])
 
 
 def get_controller_start_url():
@@ -1082,6 +1046,7 @@ def load_ipython_extension(ipython):
         to_project()
         if config["multi_controller"]:
             generate_controller()
+        shutil.copy("./file_server.py", f"{config['out']}/file_server.py")
         io._outputs = injected_outputs
 
         io()
@@ -1096,9 +1061,9 @@ def load_ipython_extension(ipython):
     @magic_arguments.argument("--mode", "-m", type=str, default="production", nargs="?")
     @register_line_magic
     def ove_config(line):
+        global config
+        config = {}
         args = magic_arguments.parse_argstring(ove_config, line)
-        if config != {}:
-            return
 
         load_config(args)
         load_server(args.remove)
@@ -1106,7 +1071,6 @@ def load_ipython_extension(ipython):
             requests.delete(f"{config['OVE_CORE']}/sections?space={config['space']}")
         else:
             print(f"DELETE: {config['OVE_CORE']}/sections?space={config['space']}")
-
 
     @register_line_magic
     def ove_controller(line):
