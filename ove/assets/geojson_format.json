@@ -10,7 +10,7 @@
                 "type": "L.geoJSON",
                 "visible": false,
                 "wms": false,
-                "data": "%%geojson%%",
+                "data": %%geojson%%,
                 "options": {
                     "style": {
                         "fill": true,
