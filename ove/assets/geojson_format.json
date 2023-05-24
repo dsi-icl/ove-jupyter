@@ -1,0 +1,29 @@
+{
+        "layers": [
+            {
+                "type": "L.tileLayer",
+                "visible": false,
+                "wms": false,
+                "url": "%%basemap%%"
+            },
+            {
+                "type": "L.geoJSON",
+                "visible": false,
+                "wms": false,
+                "data": "%%geojson%%",
+                "options": {
+                    "style": {
+                        "fill": true,
+                        "fillColor": "#B29255",
+                        "fillOpacity": 0.7,
+                        "color": "#715E3A",
+                        "weight": 4,
+                        "opacity": 0.7
+                    }
+                }
+            }
+        ],
+        "center": ["-11137.70850550061", "6710544.04980525"],
+        "resolution": "77",
+        "zoom": "12"
+    }

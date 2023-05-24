@@ -24,6 +24,15 @@ config = {}
 server_thread = None
 
 
+def read_file(filename: str) -> str:
+    with open(filename) as f:
+        return "".join(f.readlines())
+
+
+def get_dir() -> str:
+    return "/".join(os.path.realpath(__file__).split("/")[:-1])
+
+
 def mkdir(dir_):
     if not os.path.exists(dir_):
         os.makedirs(dir_)
@@ -33,7 +42,7 @@ def handle_markdown_css():
     if os.path.exists(f"{config['out']}/markdown-github.css"):
         return
     else:
-        shutil.copy("./assets/markdown-github.css", f"{config['out']}/markdown-github.css")
+        shutil.copy(f"{get_dir()}/assets/markdown-github.css", f"{config['out']}/markdown-github.css")
 
 
 class OVEException(Exception):
@@ -131,364 +140,26 @@ def format_geojson(geojson, metadata):
         basemap = metadata["url_template"].replace("{basemap_id}", f"{metadata['layer_options']['basemap_id']}")
     else:
         basemap = metadata["url_template"]
-    return {
-        "layers": [
-            {
-                "type": "L.tileLayer",
-                "visible": False,
-                "wms": False,
-                "url": basemap
-            },
-            {
-                "type": "L.geoJSON",
-                "visible": False,
-                "wms": False,
-                "data": geojson,
-                "options": {
-                    "style": {
-                        "fill": True,
-                        "fillColor": "#B29255",
-                        "fillOpacity": 0.7,
-                        "color": "#715E3A",
-                        "weight": 4,
-                        "opacity": 0.7
-                    }
-                }
-            }
-        ],
-        "center": ["-11137.70850550061", "6710544.04980525"],
-        "resolution": "77",
-        "zoom": "12"
-    }
+    outline = read_file(f"{get_dir()}/assets/geojson_format.json")
+    return json.loads(outline.replace("%%basemap%%", basemap).replace("%%geojson%%", geojson))
 
 
 def format_dict(obj):
-    head = """
-<head>
-    <title>OVE Jupyter</title>
-    <style>
-        /* Box sizing rules */
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-        }
-
-        /* Remove default margin */
-        body,
-        h1,
-        h2,
-        h3,
-        h4,
-        p,
-        figure,
-        blockquote,
-        dl,
-        dd {
-            margin: 0;
-        }
-
-        /* Remove list styles on ul, ol elements with a list role, which suggests default styling will be removed */
-        ul[role='list'],
-        ol[role='list'] {
-            list-style: none;
-        }
-
-        /* Set core root defaults */
-        html:focus-within {
-            scroll-behavior: smooth;
-        }
-
-        /* Set core body defaults */
-        body {
-            min-height: 100vh;
-            text-rendering: optimizeSpeed;
-            line-height: 1.5;
-            background-color: white;
-        }
-
-        /* A elements that don't have a class get default styles */
-        a:not([class]) {
-            text-decoration-skip-ink: auto;
-        }
-
-        /* Make images easier to work with */
-        img,
-        picture {
-            max-width: 100%;
-            display: block;
-        }
-
-        /* Inherit fonts for inputs and buttons */
-        input,
-        button,
-        textarea,
-        select {
-            font: inherit;
-        }
-
-        /* Remove all animations, transitions and smooth scroll for people that prefer not to see them */
-        @media (prefers-reduced-motion: reduce) {
-            html:focus-within {
-                scroll-behavior: auto;
-            }
-
-            *,
-            *::before,
-            *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-                scroll-behavior: auto !important;
-            }
-        }
-    </style>
-</head>
-    """
-    return f"""
-<!doctype html>
-<!doctype html>
-<html lang="en">
-{head}
-<body>
-<pre id="json">{json.dumps(obj, indent=4)}</pre>
-</body>
-</html>
-    """.strip()
+    outline = read_file(f"{get_dir()}/assets/dict_format.html")
+    return outline.replace("%%replace%%", json.dumps(obj, indent=4))
 
 
 def format_markdown(md):
     handle_markdown_css()
-    head = """
-<head>
-    <title>OVE Jupyter</title>
-    <link rel="stylesheet" type="text/css" href="../markdown-github.css">
-    <style>
-        /* Box sizing rules */
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-        }
-
-        /* Remove default margin */
-        body,
-        h1,
-        h2,
-        h3,
-        h4,
-        p,
-        figure,
-        blockquote,
-        dl,
-        dd {
-            margin: 0;
-        }
-
-        /* Remove list styles on ul, ol elements with a list role, which suggests default styling will be removed */
-        ul[role='list'],
-        ol[role='list'] {
-            list-style: none;
-        }
-
-        /* Set core root defaults */
-        html:focus-within {
-            scroll-behavior: smooth;
-        }
-
-        /* Set core body defaults */
-        body {
-            min-height: 100vh;
-            text-rendering: optimizeSpeed;
-            line-height: 1.5;
-            box-sizing: border-box;
-            min-width: 200px;
-            max-width: 980px;
-            margin: 0 auto;
-            padding: 45px;
-        }
-
-        /* A elements that don't have a class get default styles */
-        a:not([class]) {
-            text-decoration-skip-ink: auto;
-        }
-
-        /* Make images easier to work with */
-        img,
-        picture {
-            max-width: 100%;
-            display: block;
-        }
-
-        /* Inherit fonts for inputs and buttons */
-        input,
-        button,
-        textarea,
-        select {
-            font: inherit;
-        }
-
-        /* Remove all animations, transitions and smooth scroll for people that prefer not to see them */
-        @media (prefers-reduced-motion: reduce) {
-            html:focus-within {
-                scroll-behavior: auto;
-            }
-
-            *,
-            *::before,
-            *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-                scroll-behavior: auto !important;
-            }
-        }
-    </style>
-</head>
-    """
-    return f"""
-<!doctype html>
-<!doctype html>
-<html lang="en">
-{head}
-<body>
-<main class="markdown-body">
-    {markdown.markdown(md)}
-</main>
-</body>
-</html>
-    """.strip()
+    outline = read_file(f"{get_dir()}/assets/dataframe_format.html")
+    return outline.replace("%%replace%%", markdown.markdown(md))
 
 
 def format_dataframe(html):
     html = html.replace("border=\"1\" ", "").replace(" style=\"text-align: right;\"", "")
     html = re.sub(r"<style .*>(?:.|\r|\n|\t)*</style>", "", html)
-    head = """
-<head>
-    <title>OVE Jupyter</title>
-    <style>
-        /* Box sizing rules */
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-        }
-
-        /* Remove default margin */
-        body,
-        h1,
-        h2,
-        h3,
-        h4,
-        p,
-        figure,
-        blockquote,
-        dl,
-        dd {
-            margin: 0;
-        }
-
-        /* Remove list styles on ul, ol elements with a list role, which suggests default styling will be removed */
-        ul[role='list'],
-        ol[role='list'] {
-            list-style: none;
-        }
-
-        /* Set core root defaults */
-        html:focus-within {
-            scroll-behavior: smooth;
-        }
-
-        /* Set core body defaults */
-        body {
-            min-height: 100vh;
-            text-rendering: optimizeSpeed;
-            line-height: 1.5;
-        }
-
-        /* A elements that don't have a class get default styles */
-        a:not([class]) {
-            text-decoration-skip-ink: auto;
-        }
-
-        /* Make images easier to work with */
-        img,
-        picture {
-            max-width: 100%;
-            display: block;
-        }
-
-        /* Inherit fonts for inputs and buttons */
-        input,
-        button,
-        textarea,
-        select {
-            font: inherit;
-        }
-
-        /* Remove all animations, transitions and smooth scroll for people that prefer not to see them */
-        @media (prefers-reduced-motion: reduce) {
-            html:focus-within {
-                scroll-behavior: auto;
-            }
-
-            *,
-            *::before,
-            *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-                scroll-behavior: auto !important;
-            }
-        }
-
-        .dataframe {
-            font-family: Arial, Helvetica, sans-serif;
-            border-collapse: collapse;
-            width: 100vw;
-            height: 100vh;
-        }
-
-        .dataframe td, th {
-            border: 1px solid #ddd;
-            padding: 8px;
-        }
-
-        .dataframe tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
-
-        .dataframe tr:nth-child(odd) {
-            background-color: #ffffff
-        }
-
-        .dataframe tr:hover {
-            background-color: #ddd;
-        }
-
-        .dataframe th {
-            padding-top: 12px;
-            padding-bottom: 12px;
-            background-color: #002147;
-            color: white;
-        }
-
-        .dataframe th, td, tr {
-            text-align: center;
-        }
-    </style>
-</head>
-    """
-    return f"""
-<!doctype html>
-<!doctype html>
-<html lang="en">
-{head}
-<body>
-{html}
-</body>
-</html>
-    """.strip()
+    outline = read_file(f"{get_dir()}/assets/dataframe_format.html")
+    return outline.replace("%%replace%%", html)
 
 
 def get_data_type(k, display_mode, data):
@@ -664,19 +335,9 @@ def load_config(args):
 
 
 def format_project():
-    return {
-        "HasVideos": False,
-        "Metadata": {
-            "authors": "",
-            "default_mode": config["space"],
-            "description": "",
-            "name": "",
-            "publications": "",
-            "tags": [],
-            "thumbnail": "",
-        },
-        "Sections": [section["data"] for section in config["sections"].values()]
-    }
+    outline = read_file(f"{get_dir()}/assets/project.json")
+    return json.loads(outline.replace("%%space%%", config["space"]).replace("%%sections%%", json.dumps(
+        [section["data"] for section in config["sections"].values()])))
 
 
 def to_project():
@@ -703,8 +364,8 @@ def create_controller_nav_content():
     if len(config["sections"]) == 0:
         return ""
     return "\n\t\t\t".join([
-                               f"<li><button onclick=\"changeContent('{get_app_url(section)}/control.html?oveSectionId={section['id']}')\">Cell {format_cell_name(k)} - {get_app_url(section).split('/')[-1]}</button></li>"
-                               for k, section in config["sections"].items()])
+        f"<li><button onclick=\"changeContent('{get_app_url(section)}/control.html?oveSectionId={section['id']}')\">Cell {format_cell_name(k)} - {get_app_url(section).split('/')[-1]}</button></li>"
+        for k, section in config["sections"].items()])
 
 
 def get_controller_start_url():
@@ -717,115 +378,8 @@ def get_controller_start_url():
 def create_controller():
     content = create_controller_nav_content()
     start_url = get_controller_start_url()
-    script = """
-<script>
-    function changeContent(url) {
-        document.getElementById("content").src = url
-    }
-</script>
-    """
-    head = """
-<head>
-    <meta charset="UTF-8">
-    <title>OVE Jupyter Unified Controller</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <meta name="description" content="Unified controller for ove-jupyter generated sections"/>
-    <style>
-        /* Box sizing rules */
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-        }
-
-        /* Remove default margin */
-        body,
-        h1,
-        h2,
-        h3,
-        h4,
-        p,
-        figure,
-        blockquote,
-        dl,
-        dd {
-            margin: 0;
-        }
-
-        /* Remove list styles on ul, ol elements with a list role, which suggests default styling will be removed */
-        ul[role='list'],
-        ol[role='list'] {
-            list-style: none;
-        }
-
-        /* Set core root defaults */
-        html:focus-within {
-            scroll-behavior: smooth;
-        }
-
-        /* Set core body defaults */
-        body {
-            min-height: 100vh;
-            text-rendering: optimizeSpeed;
-            line-height: 1.5;
-        }
-
-        /* A elements that don't have a class get default styles */
-        a:not([class]) {
-            text-decoration-skip-ink: auto;
-        }
-
-        /* Make images easier to work with */
-        img,
-        picture {
-            max-width: 100%;
-            display: block;
-        }
-
-        /* Inherit fonts for inputs and buttons */
-        input,
-        button,
-        textarea,
-        select {
-            font: inherit;
-        }
-
-        /* Remove all animations, transitions and smooth scroll for people that prefer not to see them */
-        @media (prefers-reduced-motion: reduce) {
-            html:focus-within {
-                scroll-behavior: auto;
-            }
-
-            *,
-            *::before,
-            *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-                scroll-behavior: auto !important;
-            }
-        }
-    </style>
-</head>
-    """
-    return f"""
-<!DOCTYPE html>
-<html lang="en">
-{head}
-<body>
-<main style="display: flex; overflow: hidden">
-    <nav style="width: 15vw; overflow-y: scroll; max-height: 100vh;">
-        <ul>
-            {content}
-        </ul>
-    </nav>
-    <iframe id="content" src="{start_url}" style="width: 85vw; height: 100vh"></iframe>
-</main>
-</body>
-</html>
-
-{script}
-    """.strip()
+    outline = read_file(f"{get_dir()}/assets/controller_format.html")
+    return outline.replace("%%content%%", content).replace("%%start_url%%", start_url)
 
 
 def format_latex(latex):
@@ -833,105 +387,8 @@ def format_latex(latex):
     if "$$" not in latex:
         latex = latex.replace("$", "$$")
     latex = latex_to_html(latex)
-    head = """
-<head>
-    <title>OVE Jupyter</title>
-    <link rel="stylesheet" type="text/css" href="../markdown-github.css">
-    <style>
-        /* Box sizing rules */
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-        }
-
-        /* Remove default margin */
-        body,
-        h1,
-        h2,
-        h3,
-        h4,
-        p,
-        figure,
-        blockquote,
-        dl,
-        dd {
-            margin: 0;
-        }
-
-        /* Remove list styles on ul, ol elements with a list role, which suggests default styling will be removed */
-        ul[role='list'],
-        ol[role='list'] {
-            list-style: none;
-        }
-
-        /* Set core root defaults */
-        html:focus-within {
-            scroll-behavior: smooth;
-        }
-
-        /* Set core body defaults */
-        body {
-            min-height: 100vh;
-            text-rendering: optimizeSpeed;
-            line-height: 1.5;
-            box-sizing: border-box;
-            min-width: 200px;
-            max-width: 980px;
-            margin: 0 auto;
-            padding: 45px;
-        }
-
-        /* A elements that don't have a class get default styles */
-        a:not([class]) {
-            text-decoration-skip-ink: auto;
-        }
-
-        /* Make images easier to work with */
-        img,
-        picture {
-            max-width: 100%;
-            display: block;
-        }
-
-        /* Inherit fonts for inputs and buttons */
-        input,
-        button,
-        textarea,
-        select {
-            font: inherit;
-        }
-
-        /* Remove all animations, transitions and smooth scroll for people that prefer not to see them */
-        @media (prefers-reduced-motion: reduce) {
-            html:focus-within {
-                scroll-behavior: auto;
-            }
-
-            *,
-            *::before,
-            *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-                scroll-behavior: auto !important;
-            }
-        }
-    </style>
-</head>
-    """
-    return f"""
-<!doctype html>
-<!doctype html>
-<html lang="en">
-{head}
-<body>
-<main class="markdown-body">
-{latex}
-</main>
-</body>
-</html>
-    """.strip()
+    outline = read_file(f"{get_dir()}/assets/latex_format.html")
+    return outline.replace("%%replace%%", latex)
 
 
 def get_source(data):
@@ -1046,7 +503,7 @@ def load_ipython_extension(ipython):
         to_project()
         if config["multi_controller"]:
             generate_controller()
-        shutil.copy("./file_server.py", f"{config['out']}/file_server.py")
+        shutil.copy(f"{get_dir()}/file_server.py", f"{config['out']}/file_server.py")
         io._outputs = injected_outputs
 
         io()

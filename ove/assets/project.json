@@ -1,0 +1,13 @@
+{
+  "HasVideos": false,
+  "Metadata": {
+    "authors": "",
+    "default_mode": "%%space%%",
+    "description": "",
+    "name": "",
+    "publications": "",
+    "tags": [],
+    "thumbnail": ""
+  },
+  "Sections": %%sections%%
+}
