@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import base64
 
@@ -20,7 +21,7 @@ class AssetHandler:
         if type(data) == str:
             if "http" == data[:4]:
                 return data
-            elif "." == data[0] or "/" == data[0]:
+            elif re.match(r"^.?[/\w\- ]+\..+$", data) is not None:
                 filename = self._get_filename(data, data_type, cell_no, i, is_raw=False)
                 self.file_handler.copy(os.path.abspath(data), f"{self.out_dir}/{filename}")
                 return filename
