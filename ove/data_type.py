@@ -23,7 +23,8 @@ class DataType(Enum):
                                   data: str):
         if display_mode is not None and display_mode == IPythonDisplayType.AUDIO and "text/html" in output_type:
             return cls.AUDIO
-        elif display_mode is not None and display_mode == IPythonDisplayType.VIDEOS and "text/html" in output_type:
+        elif display_mode is not None and (
+                display_mode == IPythonDisplayType.VIDEOS or display_mode == IPythonDisplayType.YOUTUBE) and "text/html" in output_type:
             return cls.VIDEO
         elif "text/html" in output_type:
             return cls.DATAFRAME if "dataframe" in data else cls.HTML

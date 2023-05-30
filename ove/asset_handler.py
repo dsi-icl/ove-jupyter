@@ -32,6 +32,8 @@ class AssetHandler:
         return filename
 
     def get_asset_url(self, asset_filename: str) -> str:
+        if "http" == asset_filename[:4]:
+            return asset_filename
         return f"{self.host}:8000/{asset_filename}"
 
     def _get_filename(self, data: str, data_type: DataType, cell_no: int, i: int, is_raw: bool) -> str:
