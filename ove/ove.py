@@ -2,10 +2,8 @@ import typing
 import multiprocessing
 
 from dotenv import dotenv_values
-
 from ove.geometry import Geometry
 from ove.data_type import DataType
-from ove.ove_handler import OVEHandler
 from ove.file_handler import FileHandler
 from ove.file_server import create_server
 from ove.asset_handler import AssetHandler
@@ -18,13 +16,15 @@ from ove.controller_builder import ControllerBuilder
 from ove.ipython_display_type import IPythonDisplayType
 
 
-def load_server(config: dict, remove: bool, server_thread: multiprocessing.Process) -> None:
+def load_dir(out_dir: str, remove: bool) -> None:
     file_handler = FileHandler()
-    file_handler.mkdir(config["out"])
+    file_handler.mkdir(out_dir)
 
     if remove:
-        file_handler.rm(config["out"])
+        file_handler.rm(out_dir)
 
+
+def load_server(config: dict, server_thread: multiprocessing.Process) -> None:
     if server_thread is not None:
         server_thread.terminate()
 
@@ -34,7 +34,7 @@ def load_server(config: dict, remove: bool, server_thread: multiprocessing.Proce
     return server_thread
 
 
-def load_config(args: dict) -> None:
+def load_config(args: dict) -> dict:
     config = {
         "space": args.space.replace("\"", ""),
         "rows": args.rows,
@@ -42,22 +42,24 @@ def load_config(args: dict) -> None:
         "env": args.env.replace("\"", ""),
         "out": args.out.replace("\"", ""),
         "sections": {},
+        "remove": args.remove,
         "mode": Mode(args.mode),
         "multi_controller": False
     }
     config = {**{k[4:].lower(): v for k, v in dotenv_values(config["env"]).items() if "OVE_" in k}, **config}
 
-    ove_handler = OVEHandler(config["mode"], config["core"])
+
+    ove_handler = RequestHandler(config["mode"], config["core"])
     config["geometry"] = ove_handler.get_geometry(config["space"])
 
     return config
 
 
-def run(config: dict, args: dict, outputs: list[dict], injection_handler: typing.Optional[typing.Callable]):
+def run(config: dict, args: dict, outputs: list[dict], injection_handler: typing.Optional[typing.Callable]) -> None:
     validator = LayoutValidator()
 
     file_handler = FileHandler()
-    asset_handler = AssetHandler(config["out"], config["core"], file_handler)
+    asset_handler = AssetHandler(config["out"], config["host"], file_handler)
     output_formatter = OutputFormatter(file_handler, asset_handler)
 
     display_type = validator.validate(args)
@@ -85,7 +87,7 @@ def run(config: dict, args: dict, outputs: list[dict], injection_handler: typing
             if section is None:
                 continue
 
-            section_id = OVEHandler(config["mode"], config["core"]).load_section(
+            section_id = RequestHandler(config["mode"], config["core"]).load_section(
                 args.cell_no, output_idx, section, config["sections"])
             config["sections"][f"{args.cell_no}-{output_idx}"] = {
                 "id": section_id,

@@ -8,9 +8,9 @@ from IPython.core import magic_arguments
 from IPython.utils.capture import CapturedIO, capture_output
 from IPython.core.magic import magics_class, Magics, cell_magic, line_magic
 
-from ove.ove_handler import OVEHandler
 from ove.utils import OVEException, xorExist
-from ove.ove_process import load_server, load_config, run
+from ove.request_handler import RequestHandler
+from ove.ove import load_server, load_config, run, load_dir
 
 
 @magics_class
@@ -94,9 +94,10 @@ class OVEMagic(Magics):
         args = magic_arguments.parse_argstring(self.ove_config, line)
 
         self.config_ = load_config(args)
-        self.server_thread = load_server(self.config_, args.remove, self.server_thread)
+        load_dir(self.config_["out"], self.config_["remove"])
+        self.server_thread = load_server(self.config_, self.server_thread)
 
-        OVEHandler(self.config_["mode"], self.config_["core"]).clear_space(self.config_["space"])
+        RequestHandler(self.config_["mode"], self.config_["core"]).clear_space(self.config_["space"])
 
     @line_magic
     def ove_controller(self, line):

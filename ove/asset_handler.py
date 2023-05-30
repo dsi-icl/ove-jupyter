@@ -16,7 +16,7 @@ class AssetHandler:
     def handle_markdown_css(self) -> None:
         self.file_handler.copy(f"{get_dir()}/assets/markdown-github.css", f"{self.out_dir}/markdown-github.css")
 
-    def write_asset(self, data: str, cell_no: int, i: int, data_type: DataType):
+    def write_asset(self, data: str, cell_no: int, i: int, data_type: DataType) -> None:
         if type(data) == str:
             if "http" == data[:4]:
                 return data
@@ -31,7 +31,7 @@ class AssetHandler:
         return filename
 
     def get_asset_url(self, asset_filename: str) -> str:
-        return f"{self.host}/{asset_filename}"
+        return f"{self.host}:8000/{asset_filename}"
 
     def _get_filename(self, data: str, data_type: DataType, cell_no: int, i: int, is_raw: bool) -> str:
         if is_raw:

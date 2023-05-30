@@ -16,7 +16,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.config = kwargs["config"]
         super().__init__(*args, directory=kwargs["directory"], **kwargs)
 
-    def _is_authorized(self):
+    def is_authorized(self):
         config = {k: v for k, v in dotenv_values(self.config).items() if "OVE_" == k[:4]}
         username = config.get("OVE_USERNAME", None)
         password = config.get("OVE_PASSWORD", None)
@@ -28,24 +28,23 @@ class Handler(SimpleHTTPRequestHandler):
             raise Exception("Please provide both a username and a password")
 
         auth = self.headers.get("Authorized")
-        print(auth)
         return not (auth is None or not auth.startswith("Basic") or auth[6:] != base64.b64decode(
             f"{self.username}:{self.password}"))
 
-    def _send_unauthorised(self) -> None:
+    def send_unauthorised(self) -> None:
         self.send_response(401)
         self.send_header("WWW-Authenticate", "Basic")
         self.end_headers()
 
     def do_GET(self) -> None:
-        if not self._is_authorized():
-            self._send_unauthorised()
+        if not self.is_authorized():
+            self.send_unauthorised()
             return
         return SimpleHTTPRequestHandler.do_GET(self)
 
     def do_HEAD(self) -> None:
-        if not self._is_authorized():
-            self._send_unauthorised()
+        if not self.is_authorized():
+            self.send_unauthorised()
             return
         return SimpleHTTPRequestHandler.do_HEAD(self)
 

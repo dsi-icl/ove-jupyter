@@ -29,7 +29,7 @@ class OutputFormatter:
 
     def format_markdown(self, md: str) -> str:
         self.asset_handler.handle_markdown_css()
-        outline = self.file_handler.read_file(f"{get_dir()}/assets/dataframe_format.html")
+        outline = self.file_handler.read_file(f"{get_dir()}/assets/markdown_format.html")
         return outline.replace("%%replace%%", markdown(md))
 
     def format_dataframe(self, html: str) -> str:

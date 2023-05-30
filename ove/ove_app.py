@@ -1,5 +1,4 @@
 from enum import Enum
-
 from ove.data_type import DataType
 from ove.utils import OVEException
 
