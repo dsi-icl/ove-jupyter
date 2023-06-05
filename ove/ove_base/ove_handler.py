@@ -1,9 +1,8 @@
 import re
-import markdown
 
 from argparse import ArgumentParser
-from ove.request_handler import RequestHandler
-from ove.ove import load_config, run, load_dir
+from ove.ove_base.request_handler import RequestHandler
+from ove.ove_base.ove import load_config, base_run, load_dir
 
 
 class OVEHandler:
@@ -51,8 +50,8 @@ class OVEHandler:
         RequestHandler(self.config["mode"], self.config["core"]).clear_space(self.config["space"])
 
     def handle_markdown(self, data: str) -> None:
-        outputs = [{"data": {"text/plain": "r-markdown", "text/markdown": data}, "metadata": {}}]
-        run(self.config, self.args, outputs, injection_handler=None)
+        outputs = [("0", "text/markdown", data, None)]
+        base_run(self.config, self.args, outputs)
 
     def tee_config(self, data: str) -> None:
         matches = re.search(r"# ?tee ?(.*)", data)

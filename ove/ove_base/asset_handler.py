@@ -3,9 +3,9 @@ import re
 import json
 import base64
 
-from ove.data_type import DataType
-from ove.file_handler import FileHandler
+from ove.ove_base.data_type import DataType
 from ove.utils import get_dir, OVEException
+from ove.ove_base.file_handler import FileHandler
 
 
 class AssetHandler:
@@ -15,7 +15,8 @@ class AssetHandler:
         self.host = host
 
     def handle_markdown_css(self) -> None:
-        self.file_handler.copy(f"{get_dir()}/assets/markdown-github.css", f"{self.out_dir}/markdown-github.css")
+        self.file_handler.copy(f"{get_dir()}/ove_base/assets/markdown-github.css",
+                               f"{self.out_dir}/markdown-github.css")
 
     def write_asset(self, data: str, cell_no: int, i: int, data_type: DataType) -> None:
         if type(data) == str:

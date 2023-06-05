@@ -1,10 +1,10 @@
 from traceback import format_exc
-from ove.r_handler import OVEHandler
+from ove.ove_base.ove_handler import OVEHandler
 from http.server import SimpleHTTPRequestHandler
-from ove.file_server import Handler, ThreadedHTTPServer
+from ove.ove_base.file_server import BaseHandler, ThreadedHTTPServer
 
 
-class RServer(Handler):
+class Server(BaseHandler):
     def __init__(self, *args, **kwargs):
         self.handler = OVEHandler()
         super().__init__(*args, **kwargs)
@@ -57,6 +57,6 @@ def handler_from(directory, is_background, config):
         return SimpleHTTPRequestHandler.__init__(self, *args, directory=self.directory, **kwargs)
 
     return type(f"HandlerFrom<{directory}>",
-                (RServer,),
+                (Server,),
                 {"__init__": _init, "directory": directory, "is_background": is_background, "config": config,
                  "handler": OVEHandler()})

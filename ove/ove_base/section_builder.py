@@ -1,10 +1,10 @@
 import typing
 
-from ove.ove_app import OVEApp
-from ove.geometry import Geometry
-from ove.data_type import DataType
-from ove.asset_handler import AssetHandler
-from ove.output_formatter import OutputFormatter
+from ove.ove_base.ove_app import OVEApp
+from ove.ove_base.geometry import Geometry
+from ove.ove_base.data_type import DataType
+from ove.ove_base.asset_handler import AssetHandler
+from ove.ove_base.output_formatter import OutputFormatter
 
 
 class SectionBuilder:
@@ -14,9 +14,7 @@ class SectionBuilder:
         self.formatter = output_formatter
 
     def build_section(self, data: str, geometry: Geometry, cell_no: int, i: int, i_total: int, space: str,
-                      data_type: DataType, metadata: dict) -> typing.Optional[dict]:
-        if data_type is None:
-            return None
+                      data_type: DataType, metadata: dict) -> dict:
         app = OVEApp.from_data_type(data_type)
         data = self.formatter.format_data(data, data_type, metadata)
         asset_filename = self.asset_handler.write_asset(data, cell_no, i, data_type)

@@ -2,6 +2,9 @@ import os
 import re
 import sys
 import html
+import errno
+import logging
+import argparse
 
 from io import StringIO
 from dotenv import dotenv_values
@@ -10,10 +13,11 @@ from urllib.parse import quote, unquote
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
 
-class Handler(SimpleHTTPRequestHandler):
+class BaseHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         self.is_background = kwargs["is_background"]
         self.config = kwargs["config"]
+        self.directory = kwargs["directory"]
         super().__init__(*args, directory=kwargs["directory"], **kwargs)
 
     def is_authorized(self):
@@ -40,13 +44,25 @@ class Handler(SimpleHTTPRequestHandler):
         if not self.is_authorized():
             self.send_unauthorised()
             return
-        return SimpleHTTPRequestHandler.do_GET(self)
+        self.range_from, self.range_to = self._get_range_header()
+        if self.range_from is None:
+            # nothing to do here
+            return SimpleHTTPRequestHandler.do_GET(self)
+        f = self.send_range_head()
+        if f:
+            self.copy_file_range(f, self.wfile)
+            f.close()
 
     def do_HEAD(self) -> None:
         if not self.is_authorized():
             self.send_unauthorised()
             return
-        return SimpleHTTPRequestHandler.do_HEAD(self)
+        self.range_from, self.range_to = self._get_range_header()
+        if self.range_from is None:
+            return SimpleHTTPRequestHandler.do_HEAD(self)
+        f = self.send_range_head()
+        if f:
+            f.close()
 
     def end_headers(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -56,7 +72,14 @@ class Handler(SimpleHTTPRequestHandler):
 
     def log_message(self, format: str, *args) -> None:
         if self.is_background:
-            pass
+            logging.basicConfig(filename=f"{self.directory}/server.log",
+                                filemode='a',
+                                format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(thread)d %(message)s',
+                                datefmt='%H:%M:%S',
+                                level=logging.DEBUG)
+            logger = logging.getLogger("server")
+            logger.info(format % args)
+            logger.info(self.headers)
         else:
             SimpleHTTPRequestHandler.log_message(self, format, *args)
 
@@ -71,7 +94,11 @@ class Handler(SimpleHTTPRequestHandler):
             read_buf = in_file.read(min(buf_length, left_to_copy))
             if len(read_buf) == 0:
                 break
-            out_file.write(read_buf)
+            try:
+                out_file.write(read_buf)
+            except IOError as e:
+                if e.errno == errno.EPIPE:
+                    pass
             bytes_copied += len(read_buf)
         return bytes_copied
 
@@ -85,7 +112,7 @@ class Handler(SimpleHTTPRequestHandler):
         """
         path = self.translate_path(self.path)
         f = None
-        if isdir(path):
+        if os.path.isdir(path):
             if not self.path.endswith('/'):
                 # redirect browser - doing basically what apache does
                 self.send_response(301)
@@ -122,7 +149,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_response(206)
 
         self.send_header("Content-type", c_type)
-        fs = fstat(f.fileno())
+        fs = os.fstat(f.fileno())
         file_size = fs.st_size
         if self.range_from is not None:
             if self.range_to is None or self.range_to >= file_size:
@@ -166,7 +193,7 @@ class Handler(SimpleHTTPRequestHandler):
         if range_header is None:
             return (None, None)
         if not range_header.startswith("bytes="):
-            print(f"Not implemented: parsing header Range: {range_header}")
+            self.log_message(f"Not implemented: parsing header Range: {range_header}")
             return (None, None)
         regex = re.compile(r"^bytes=(\d+)-(\d+)?")
         range_thing = regex.search(range_header)
@@ -177,7 +204,7 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 return (from_val, None)
         else:
-            print('CANNOT PARSE RANGE HEADER:', range_header)
+            self.log_message('CANNOT PARSE RANGE HEADER:', range_header)
             return (None, None)
 
 
@@ -195,18 +222,38 @@ def handler_from(directory, is_background, config):
         return SimpleHTTPRequestHandler.__init__(self, *args, directory=self.directory, **kwargs)
 
     return type(f"HandlerFrom<{directory}>",
-                (Handler,),
+                (BaseHandler,),
                 {"__init__": _init, "directory": directory, "is_background": is_background, "config": config})
 
 
-if __name__ == "__main__":
-    port_regex = re.compile(
+def port_regex(arg_value: str) -> int:
+    pattern = re.compile(
         r"^((6553[0-5])|(655[0-2][0-9])|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([0-5]{0,5})|([0-9]{1,4}))$")
-    if len(sys.argv) < 3 or re.match(port_regex, sys.argv[1]) is None or not (
-            os.path.exists(sys.argv[2]) and os.path.isdir(sys.argv[2])):
-        raise Exception("Please provide a valid port number and working directory")
-    if len(sys.argv) > 3 and os.path.exists(sys.argv[3]):
-        config = sys.argv[3]
-    else:
-        config = None
-    create_server(int(sys.argv[1]), sys.argv[2], config, is_background=False)
+    if not pattern.match(arg_value):
+        raise argparse.ArgumentTypeError("Invalid port number")
+    return int(arg_value)
+
+
+def is_valid_dir(arg_value: str) -> str:
+    if not os.path.exists(arg_value) or not os.path.isdir(arg_value):
+        raise argparse.ArgumentTypeError("Invalid output directory")
+    return arg_value
+
+
+def is_valid_file(arg_value: str) -> str:
+    if not os.path.exists(arg_value):
+        raise argparse.ArgumentTypeError("Invalid config file")
+    return arg_value
+
+
+def get_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--port", default=8000, type=port_regex, nargs="?")
+    parser.add_argument("-o", "--out", default=".ove", type=is_valid_dir, nargs="?")
+    parser.add_argument("-e", "--env", default=".env", type=is_valid_file, nargs="?")
+    return parser
+
+
+if __name__ == "__main__":
+    args = get_parser().parse_args()
+    create_server(args.port, args.out, args.env, is_background=False)

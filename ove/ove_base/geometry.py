@@ -1,9 +1,9 @@
 import math
 import typing
-from enum import Enum
 
+from enum import Enum
 from ove.utils import OVEException
-from ove.layout_validator import DisplayType
+from ove.ove_base.layout_validator import DisplayType
 
 
 class SplitMode(Enum):

@@ -1,6 +1,6 @@
 from enum import Enum
-from ove.data_type import DataType
 from ove.utils import OVEException
+from ove.ove_base.data_type import DataType
 
 
 class OVEApp(Enum):

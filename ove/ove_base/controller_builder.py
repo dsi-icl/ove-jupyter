@@ -1,4 +1,4 @@
-from ove.file_handler import FileHandler
+from ove.ove_base.file_handler import FileHandler
 from ove.utils import get_app_url, format_cell_name, get_dir
 
 
@@ -23,7 +23,7 @@ class ControllerBuilder:
     def _create_controller(self, sections: list[dict]) -> str:
         content = self._create_controller_nav_content(sections)
         start_url = self._get_controller_start_url(sections)
-        outline = self.file_handler.read_file(f"{get_dir()}/assets/controller_format.html")
+        outline = self.file_handler.read_file(f"{get_dir()}/ove_base/assets/controller_format.html")
         return outline.replace("%%content%%", content).replace("%%start_url%%", start_url)
 
     def generate_controller(self, sections: list[dict]) -> None:
