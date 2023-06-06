@@ -3,6 +3,7 @@ import re
 import typing
 
 from enum import Enum
+from dotenv import dotenv_values
 
 
 class Mode(Enum):
@@ -38,3 +39,18 @@ def is_dataframe(data: str, data_type: str) -> bool:
 
 def xorExist(a: typing.Optional[typing.Any], b: typing.Optional[typing.Any]):
     return (a is not None and b is None) or (a is None and b is not None)
+
+
+def load_base_config(args: dict) -> dict:
+    config = {
+        "space": args.space.replace("\"", ""),
+        "rows": args.rows,
+        "cols": args.cols,
+        "env": args.env.replace("\"", ""),
+        "out": args.out.replace("\"", ""),
+        "sections": {},
+        "remove": args.remove,
+        "mode": Mode(args.mode),
+        "multi_controller": False
+    }
+    return {**{k[4:].lower(): v for k, v in dotenv_values(config["env"]).items() if "OVE_" in k}, **config}

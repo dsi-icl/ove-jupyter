@@ -1,4 +1,10 @@
+import copy
+import json
+import time
 import typing
+import logging
+import requests
+import multiprocessing
 
 from IPython import get_ipython
 from IPython.lib.display import IFrame
@@ -6,9 +12,11 @@ from IPython.core import magic_arguments
 from IPython.utils.capture import CapturedIO, capture_output
 from IPython.core.magic import magics_class, Magics, cell_magic, line_magic
 
-from ove.utils import OVEException, xorExist
-from ove.ove_base.ove import load_server, load_config, load_dir, base_run
-from ove.ove.ipython_display_type import IPythonDisplayType, to_data_type
+from ove.utils import load_base_config
+from ove.ove_base.server import create_server
+from ove.ove_base.file_handler import FileHandler
+from ove.utils import OVEException, xorExist, get_dir
+from ove.ipython.ipython_display_type import IPythonDisplayType, to_data_type
 
 
 @magics_class
@@ -16,6 +24,8 @@ class OVEMagic(Magics):
     def __init__(self, shell):
         # You must call the parent constructor
         super(OVEMagic, self).__init__(shell)
+        logging.getLogger("requests").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
         self.config_ = {}
         self.server_thread = None
 
@@ -32,7 +42,8 @@ class OVEMagic(Magics):
     def inject(self, controller_injection: typing.Optional[str] = None):
         if controller_injection is None:
             return None
-        if self.config_["mode"] == "production":
+        mode = requests.get(f"{self.config_['host']}:{self.config_['port']}/mode").json()["mode"]
+        if mode == "production":
             return self.get_injected(IFrame(controller_injection, "100%", "400px"))
         else:
             print(f"Injecting: {controller_injection}")
@@ -42,7 +53,8 @@ class OVEMagic(Magics):
         formatted_outputs = []
         injected = {}
 
-        for output_idx, output in enumerate(io._outputs):
+        for output_idx, output_ in enumerate(io._outputs):
+            output = copy.deepcopy(output_)
             if len(output["data"]) == 0:
                 continue
 
@@ -60,9 +72,19 @@ class OVEMagic(Magics):
             for output_type, data in output["data"].items():
                 data_type = to_data_type(display_mode, output_type, data)
                 metadata = output["metadata"].get(output_type, None)
-                formatted_outputs.append((str(output_idx), data_type, data, metadata))
+                formatted_outputs.append((str(output_idx), data_type.value, data, metadata))
 
         return formatted_outputs, injected
+
+    def load_server(self, server_thread: multiprocessing.Process) -> None:
+        # pass
+        if self.server_thread is not None:
+            self.server_thread.terminate()
+
+        self.server_thread = multiprocessing.Process(target=create_server,
+                                                     args=(8000, self.config_["out"], self.config_["env"], True))
+        self.server_thread.start()
+        FileHandler().copy(f"{get_dir()}/ove_base/file_server.py", f"{self.config_['out']}/file_server.py")
 
     @magic_arguments.magic_arguments()
     @magic_arguments.argument("cell_no", type=int)
@@ -78,10 +100,12 @@ class OVEMagic(Magics):
     @cell_magic
     def tee(self, line, cell):
         args = magic_arguments.parse_argstring(self.tee, line)
+        requests.post(f"{self.config_['host']}:{self.config_['port']}/tee", json=vars(args))
 
         io = self.get_output(cell)
         formatted_outputs, injected = self.format_ipython(io)
-        controller_urls = base_run(self.config_, args, formatted_outputs)
+        controller_urls = requests.post(f"{self.config_['host']}:{self.config_['port']}/output",
+                                        json=formatted_outputs).json()
 
         for data in controller_urls:
             idx = int(data["idx"])
@@ -108,11 +132,12 @@ class OVEMagic(Magics):
     @line_magic
     def ove_config(self, line):
         args = magic_arguments.parse_argstring(self.ove_config, line)
+        self.config_ = load_base_config(args)
+        self.load_server(self.server_thread)
+        time.sleep(1)
 
-        self.config_ = load_config(args)
-        load_dir(self.config_["out"], self.config_["remove"])
-        self.server_thread = load_server(self.config_, self.server_thread)
+        requests.post(f"{self.config_['host']}:{self.config_['port']}/config", json=vars(args))
 
     @line_magic
     def ove_controller(self, line):
-        self.config_["multi_controller"] = True
+        requests.post(f"{self.config_['host']}:{self.config_['port']}/controller")

@@ -1,4 +1,4 @@
-from ove.ove.ove_magic import OVEMagic
+from ove.ipython.ove_magic import OVEMagic
 
 
 def load_ipython_extension(ipython):

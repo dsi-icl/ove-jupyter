@@ -35,3 +35,9 @@ class FileHandler:
     def rm(self, dir_: str) -> None:
         for f in glob.glob(f"{dir_}/*"):
             os.remove(f)
+
+    def load_dir(self, out_dir: str, remove: bool) -> None:
+        self.mkdir(out_dir)
+
+        if remove:
+            self.rm(out_dir)
