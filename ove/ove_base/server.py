@@ -51,6 +51,9 @@ class Server(BaseHandler):
         else:
             SimpleHTTPRequestHandler.do_GET(self)
 
+    def do_OPTIONS(self) -> None:
+        self._send_code(200)
+
     def do_POST(self) -> None:
         try:
             if not self.is_authorized():

@@ -47,11 +47,7 @@ class OVEHandler:
         return parser
 
     def parse_config(self, data: str) -> dict:
-        matches = re.search(r"# ?ove_config ?(.*)", data)
-        if matches is None:
-            return
-        line = matches.group(1)
-        return self.config_parser.parse_args(line.split(" "))
+        return self.config_parser.parse_args(data.split(" "))
 
     def load_config(self, args: dict) -> dict:
         self.config = load_base_config(args)
@@ -63,19 +59,13 @@ class OVEHandler:
         self.load_config(args)
         FileHandler().load_dir(self.config["out"], self.config["remove"])
 
-        RequestHandler(self.config["mode"], self.config["core"]).clear_space(self.config["space"])
-
     def parse_tee(self, data: str) -> dict:
-        matches = re.search(r"# ?tee ?(.*)", data)
-        if matches is None:
-            return
-        line = matches.group(1)
-        return self.tee_parser.parse_args(line.split(" "))
+        return self.tee_parser.parse_args(data.split(" "))
 
     def tee(self, args: dict) -> None:
         self.args = args
 
-    def handle_output(self, outputs: list[tuple]) -> list[dict]:
+    def handle_output(self, outputs: list[list]) -> list[dict]:
         validator = LayoutValidator()
         file_handler = FileHandler()
         asset_handler = AssetHandler(self.config["out"], self.config["host"], file_handler)

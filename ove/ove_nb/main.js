@@ -1,139 +1,155 @@
 define([
     "base/js/namespace",
     "notebook/js/outputarea",
-    "notebook/js/codecell"
-], function (Jupyter, oa) {
-    const params = {
-        limit_output: 0,
-        limit_stream: true,
-        limit_execute_result: true,
-        limit_display_data: true,
-        limit_html_output: true,
-        limit_output_message: "<b>OVE Jupyter extension: Maximum message size of {limit_output_length} exceeded with {output_length} characters</b>"
-    };
+    "./display_type"
+], (Jupyter, oa, dt) => {
+    let _outputs = {};
 
-    const update_params = function () {
-        const config = Jupyter.notebook.config;
-        for (let key in params) {
-            if (config.data.hasOwnProperty(key)) {
-                params[key] = config.data[key];
+    const check_regex = async (regex, str, handler) => {
+        if (str === null || str === undefined) return false;
+        const match = str.match(regex);
+        if (match !== null) {
+            if (handler !== null && handler !== undefined) {
+                if (match.length > 1) {
+                    await handler(match[1]);
+                } else {
+                    await handler();
+                }
             }
+            return [true, match];
         }
+        return [false, match];
     };
 
-    function is_finite_number (n) {
-        n = parseFloat(n);
-        return !isNaN(n) && isFinite(n);
-    }
+    const config_handler = async args => {
+        console.log(`OVE CONFIG: ${args}`);
+        await fetch("http://localhost:8000/config", {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain",
+            },
+            body: args,
+        });
 
-    const insert_cell = function () {
-        const cell = Jupyter.notebook.insert_cell_above("code");
-        cell.set_text("Hello from OVE");
-        Jupyter.notebook.select_prev(cell);
+        console.log("Updated config");
     };
 
-    const initialize = function () {
+    const format_outputs = outputs => outputs.flatMap((output, output_idx) => {
+        if (Object.keys(output.data).length === 0) {
+            return [];
+        }
+
+        const display_mode = dt.fromCellOutput(output);
+
+        if (display_mode !== null) {
+            output = dt.formatCellOutput(display_mode, output);
+        }
+
+        output.data = Object.fromEntries(Object.entries(output.data).filter(([key]) => !key.includes('text/plain')));
+
+        if (Object.keys(output.data).length > 1) {
+            throw new Error(`Unexpected output size: ${Object.keys(output.data).length}`);
+        }
+
+        return Object.entries(output.data).map(([key, value]) => {
+            const data_type = dt.toDataType(display_mode, key, value);
+            const metadata = output.metadata?.[key];
+            return [output_idx.toString(10), data_type, value, metadata];
+        });
+    });
+
+    const tee_handler = async args => {
+        console.log(`TEE CONFIG: ${args}`);
+        await fetch("http://localhost:8000/tee", {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain",
+            },
+            body: args,
+        });
+    };
+
+    const controller_handler = async () => {
+        console.log("REGISTERING CONTROLLER");
+        await fetch("http://localhost:8000/controller", {
+            method: "POST"
+        });
+
+        console.log("Registered controller");
+    };
+
+    const initialize = () => {
         console.log("Initializing OVE Jupyter");
-        update_params();
-        params.limit_output = parseFloat(params.limit_output);
-        const old_handle_output = oa.OutputArea.prototype.handle_output;
-        oa.OutputArea.prototype.handle_output = function (msg) {
-            const handled_msg_types = ["stream", "execute_result", "display_data"];
-            console.log(JSON.stringify(msg));
 
-            if (handled_msg_types.indexOf(msg.header.msg_type) < 0) {
-                return old_handle_output.apply(this, arguments);
+        Jupyter.notebook.events.on("execute.CodeCell", async function (event, {cell}) {
+            console.log("Executing cell");
+            try {
+                const data = JSON.parse(JSON.stringify(cell));
+                const config_regex = /^# ?ove_config ([^\n]*)/;
+                const controller_regex = /^# ?ove_controller\n?/;
+
+                await check_regex(config_regex, data?.source, config_handler);
+                await check_regex(controller_regex, data?.source, controller_handler);
+            } catch (e) {
+                console.log(e);
             }
+        });
 
-            if (!params.limit_html_output && msg?.content?.data?.["text/html"] !== undefined) {
-                return old_handle_output.apply(this, arguments);
-            }
-
-            let MAX_CHARACTERS = params.limit_output;
-            console.log("-------------------");
-            console.log(JSON.stringify(this.element.closest(".cell").text()));
-            console.log(JSON.stringify(this.element.closest(".cell").data("cell")));
-            fetch("http://localhost:8999").then(res => console.log(res));
-            console.log("-------------------");
-            const cell_metadata = this.element.closest(".cell").data("cell").metadata;
-
-            if (is_finite_number(cell_metadata.limit_output)) {
-                MAX_CHARACTERS = parseFloat(cell_metadata.limit_output);
-            }
-
-            let count = this.element.data("limit_output_count") || 0;
-            const old_count = count;
-
-            if (msg.header.msg_type === "stream" && params.limit_stream) {
-                count += String(msg.content.text).length;
-            } else if ((msg.header.msg_type === "execute_result" && params.limit_execute_result) || (msg.header.msg_type === "display_data" && params.limit_display_data)) {
-                count += Math.max((msg.content.data["text/plain"] === undefined) ? 0 : String(msg.content.data["text/plain"]).length,
-                    (msg.content.data["text/html"] === undefined) ? 0 : String(msg.content.data["text/html"]).length);
-            }
-
-            this.element.data("limit_output_count", count);
-
-            if (count <= MAX_CHARACTERS) {
-                return old_handle_output.apply(this, arguments);
-            }
-
-            if (old_count > MAX_CHARACTERS) {
-                return
-            }
-
-            const to_add = MAX_CHARACTERS - old_count;
-
-            if (msg.header.msg_type === "stream") {
-                msg.content.text = msg.content.text.substring(0, to_add);
-            } else {
-                if (msg?.content?.data?.["text/plain"] !== undefined) {
-                    msg.content.data["text/plain"] = msg.content.data["text/plain"].substring(0, to_add);
+        Jupyter.notebook.events.on("finished_execute.CodeCell", async function (event, {cell}) {
+            try {
+                const formatted_cell = JSON.parse(JSON.stringify(cell));
+                const [, match] = await check_regex(/# ?tee (\d+)(?: (.+))?/, formatted_cell?.source);
+                if (match === null || match.length <= 1) {
+                    return
                 }
-                if (msg?.content?.data?.["text/html"] !== undefined) {
-                    msg.content.data["text/html"] = msg.content.data["text/html"].substring(0, to_add);
-                }
+                console.log(`Finished executing cell: ${match[1]}`);
 
-                old_handle_output.apply(this, arguments);
+                await tee_handler(match.slice(1).filter(x => x !== null && x !== undefined).join(" "));
 
-                console.log(`limit_output: Maximum message size of ${MAX_CHARACTERS} exceeded with ${count} characters. Further output muted.`);
-
-                const limit_message = params.limit_output_message.replace("{message_type}", msg.header.msg_type).replace("{limit_output_length}", MAX_CHARACTERS).replace("{output_length}", count);
-
-                this.append_output({
-                    output_type: "display_data",
-                    metadata: {},
-                    data: {"text/html": limit_message}
+                const formatted_outputs = format_outputs(_outputs[match[1]]);
+                console.log(JSON.stringify(formatted_outputs));
+                await fetch("http://localhost:8000/output", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(formatted_outputs),
                 });
+                delete _outputs[match[1]];
+            } catch (e) {
+                _outputs = {};
+                console.log(e);
             }
-        };
+        });
 
-        const old_clear_output = oa.OutputArea.prototype.clear_output;
+        // noinspection JSUnusedGlobalSymbols
+        oa.OutputArea.prototype.handle_output = async function () {
+            console.log("Handling output");
+            try {
+                const cell = JSON.parse(JSON.stringify(this.element.closest(".cell").data("cell")));
+                const [, match] = await check_regex(/# ?tee (\d+)(?: (.+))?/, cell.source);
+                if (match !== null && match.length > 1) {
+                    if (_outputs[match[1]] !== undefined) {
+                        _outputs[match[1]].push(arguments["0"]?.content);
+                    } else {
+                        _outputs[match[1]] = [arguments["0"]?.content];
+                    }
+                }
+            } catch (e) {
+                console.log(e);
+            }
 
-        oa.OutputArea.prototype.clear_output = function () {
-            this.element.data("limit_output_count", 0);
-            return old_clear_output.apply(this, arguments);
+            this.append_output({
+                output_type: "display_data",
+                metadata: {},
+                data: {}
+            });
         };
     };
 
-    const oveButton = function () {
-        console.log();
-        Jupyter.toolbar.add_buttons_group([
-            Jupyter.keyboard_manager.actions.register({
-                "help": "Add OVE Jupyter cell",
-                "icon": "fa-paper-plane",
-                "handler": insert_cell
-            }, "add-ove-jupyter-cell", "OVE Jupyter")
-        ]);
-    };
+    const load_ipython_extension = () => Jupyter.notebook.config.loaded.then(initialize).catch(() => console.log("Error loading ove-jupyter"));
 
-    function load_ipython_extension() {
-        if (Jupyter.notebook.get_cells().length === 1) {
-            insert_cell();
-        }
-        oveButton();
-        return Jupyter.notebook.config.loaded.then(initialize);
-    }
-
+    // noinspection JSUnusedGlobalSymbols
     return {
         load_ipython_extension
     };
