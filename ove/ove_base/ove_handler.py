@@ -18,7 +18,7 @@ class OVEHandler:
         self.config = {}
         self.config_parser = self._build_config_parser()
         self.tee_parser = self._build_tee_parser()
-        self.args = None
+        self.args = {}
 
     def _build_config_parser(self) -> ArgumentParser:
         parser = ArgumentParser(add_help=False)
@@ -63,17 +63,18 @@ class OVEHandler:
         return self.tee_parser.parse_args(data.split(" "))
 
     def tee(self, args: dict) -> None:
-        self.args = args
+        self.args[args.cell_no] = args
 
-    def handle_output(self, outputs: list[list]) -> list[dict]:
+    def handle_output(self, outputs: list[list], cell_no) -> list[dict]:
+        args = self.args[cell_no]
         validator = LayoutValidator()
         file_handler = FileHandler()
         asset_handler = AssetHandler(self.config["out"], self.config["host"], file_handler)
         output_formatter = OutputFormatter(file_handler, asset_handler)
 
-        display_type = validator.validate(self.args)
-        geometry = Geometry(self.args, display_type, self.config["geometry"], self.config["rows"], self.config["cols"],
-                            self.args.split)
+        display_type = validator.validate(args)
+        geometry = Geometry(args, display_type, self.config["geometry"], self.config["rows"], self.config["cols"],
+                            args.split)
 
         controller_urls = []
 
@@ -82,11 +83,11 @@ class OVEHandler:
             data_type = DataType(data_type)
             section = SectionBuilder(
                 self.config["core"], asset_handler, output_formatter).build_section(
-                data, geometry, self.args.cell_no, output_idx, len(outputs), self.config["space"], data_type, metadata)
+                data, geometry, args.cell_no, output_idx, len(outputs), self.config["space"], data_type, metadata)
 
             section_id = RequestHandler(self.config["mode"], self.config["core"]).load_section(
-                self.args.cell_no, output_idx, section, self.config["sections"])
-            self.config["sections"][f"{self.args.cell_no}-{output_idx}"] = {
+                args.cell_no, output_idx, section, self.config["sections"])
+            self.config["sections"][f"{args.cell_no}-{output_idx}"] = {
                 "id": section_id,
                 "data": section
             }

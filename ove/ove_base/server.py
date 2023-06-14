@@ -78,7 +78,7 @@ class Server(BaseHandler):
                 self._send_code(200)
             elif self.path == "/output":
                 outputs = self._load_and_decode()
-                urls = self.handler.handle_output(outputs)
+                urls = self.handler.handle_output(outputs["data"], outputs["cell_no"])
                 self._send_json(urls)
             elif self.path == "/controller":
                 self.handler.config["multi_controller"] = True
@@ -86,8 +86,9 @@ class Server(BaseHandler):
             else:
                 self._send_code(404)
         except Exception as e:
-            print("Handling exception")
-            self._send_data(format_exc(), code=500)
+            print(e)
+            print(format_exc())
+            self._send_data(str(e), code=500)
 
 
 def create_server(port, out, config, is_background):

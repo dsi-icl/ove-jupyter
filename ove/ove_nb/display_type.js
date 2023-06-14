@@ -50,14 +50,16 @@ define([], function () {
             return null;
         }
 
-        console.log(`CELL OUTPUT TYPE: ${search[1]}`);
-
         return search[1];
     };
 
     const formatCellOutput = (type, output) => {
         if (type === DisplayTypes.YOUTUBE) {
-            output.data = Object.fromEntries(Object.entries(output).filter(([key]) => !key.includes('image')));
+            output.data = Object.keys(output.data).reduce((acc, x) => {
+                if (x.includes("image")) return acc;
+                acc[x] = output.data[x];
+                return acc;
+            }, {});
         }
 
         return output;

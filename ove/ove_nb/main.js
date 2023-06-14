@@ -45,16 +45,20 @@ define([
             output = dt.formatCellOutput(display_mode, output);
         }
 
-        output.data = Object.fromEntries(Object.entries(output.data).filter(([key]) => !key.includes('text/plain')));
+        output.data = Object.keys(output.data).reduce((acc, x) => {
+            if (x.includes("text/plain")) return acc;
+            acc[x] = output.data[x];
+            return acc;
+        }, {});
 
         if (Object.keys(output.data).length > 1) {
             throw new Error(`Unexpected output size: ${Object.keys(output.data).length}`);
         }
 
-        return Object.entries(output.data).map(([key, value]) => {
-            const data_type = dt.toDataType(display_mode, key, value);
+        return Object.keys(output.data).map(key => {
+            const data_type = dt.toDataType(display_mode, key, output.data[key]);
             const metadata = output.metadata?.[key];
-            return [output_idx.toString(10), data_type, value, metadata];
+            return [output_idx.toString(10), data_type, output.data[key], metadata];
         });
     });
 
@@ -113,7 +117,10 @@ define([
                     headers: {
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify(formatted_outputs),
+                    body: JSON.stringify({
+                        cell_no: parseInt(match[1]),
+                        data: formatted_outputs
+                    }),
                 });
                 delete _outputs[match[1]];
             } catch (e) {
