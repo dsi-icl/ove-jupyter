@@ -1,6 +1,7 @@
 import copy
 import json
 import time
+import uuid
 import typing
 import logging
 import requests
@@ -13,6 +14,7 @@ from IPython.utils.capture import CapturedIO, capture_output
 from IPython.core.magic import magics_class, Magics, cell_magic, line_magic
 
 from ove.utils import load_base_config
+from ove.ove_base.locks import LATEX_LOCK
 from ove.ove_base.server import create_server
 from ove.ove_base.file_handler import FileHandler
 from ove.utils import OVEException, xorExist, get_dir
@@ -24,6 +26,7 @@ class OVEMagic(Magics):
     def __init__(self, shell):
         # You must call the parent constructor
         super(OVEMagic, self).__init__(shell)
+        self.uuid = str(uuid.uuid4())
         logging.getLogger("requests").setLevel(logging.WARNING)
         logging.getLogger("urllib3").setLevel(logging.WARNING)
         self.config_ = {}
@@ -100,12 +103,12 @@ class OVEMagic(Magics):
     @cell_magic
     def tee(self, line, cell):
         args = magic_arguments.parse_argstring(self.tee, line)
-        requests.post(f"{self.config_['host']}:{self.config_['port']}/tee", json=vars(args))
+        requests.post(f"{self.config_['host']}:{self.config_['port']}/tee", json={"data": vars(args), "id": self.uuid})
 
         io = self.get_output(cell)
         formatted_outputs, injected = self.format_ipython(io)
         controller_urls = requests.post(f"{self.config_['host']}:{self.config_['port']}/output",
-                                        json=formatted_outputs).json()
+                                        json={"data": formatted_outputs, "id": self.uuid}).json()
 
         for data in controller_urls:
             idx = int(data["idx"])
@@ -132,12 +135,15 @@ class OVEMagic(Magics):
     @line_magic
     def ove_config(self, line):
         args = magic_arguments.parse_argstring(self.ove_config, line)
+        if LATEX_LOCK is None:
+            raise Exception("No locking available")
         self.config_ = load_base_config(args)
         self.load_server(self.server_thread)
         time.sleep(1)
 
-        requests.post(f"{self.config_['host']}:{self.config_['port']}/config", json=vars(args))
+        requests.post(f"{self.config_['host']}:{self.config_['port']}/config",
+                      json={"data": vars(args), "id": self.uuid})
 
     @line_magic
     def ove_controller(self, line):
-        requests.post(f"{self.config_['host']}:{self.config_['port']}/controller")
+        requests.post(f"{self.config_['host']}:{self.config_['port']}/controller", json={"id": self.uuid})

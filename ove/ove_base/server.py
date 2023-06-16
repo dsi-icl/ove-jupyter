@@ -59,29 +59,33 @@ class Server(BaseHandler):
             if not self.is_authorized():
                 self.send_unauthorised()
             elif self.path == "/config":
-                args = self._load_and_decode()
-                if self.headers.get("Content-Type") != "application/json":
+                data = self._load_and_decode()
+                uuid, args = data["id"], data["data"]
+                if type(args) == str:
                     args = self.handler.parse_config(args)
                 else:
                     args = argparse.Namespace(**args)
 
-                self.handler.ove_config(args)
+                self.handler.ove_config(uuid, args)
                 self._send_code(200)
             elif self.path == "/tee":
-                args = self._load_and_decode()
-                if self.headers.get("Content-Type") != "application/json":
+                data = self._load_and_decode()
+                uuid, args = data["id"], data["data"]
+                if type(args) == str:
                     args = self.handler.parse_tee(args)
                 else:
                     args = argparse.Namespace(**args)
 
-                self.handler.tee(args)
+                self.handler.tee(uuid, args)
                 self._send_code(200)
             elif self.path == "/output":
-                outputs = self._load_and_decode()
-                urls = self.handler.handle_output(outputs["data"], outputs["cell_no"])
+                data = self._load_and_decode()
+                uuid, outputs, cell_no = data["id"], data["data"], data["cell_no"]
+                urls = self.handler.handle_output(uuid, outputs, cell_no)
                 self._send_json(urls)
             elif self.path == "/controller":
-                self.handler.config["multi_controller"] = True
+                uuid = self._load_and_decode()["id"]
+                self.handler.config[uuid]["multi_controller"] = True
                 self._send_code(200)
             else:
                 self._send_code(404)

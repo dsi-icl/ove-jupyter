@@ -3,7 +3,19 @@ define([
     "notebook/js/outputarea",
     "./display_type"
 ], (Jupyter, oa, dt) => {
+    const generate_uuid = () => {
+        const rand_int = (max) => Math.floor(Math.random() * max);
+        const opt = rand_int(3);
+        switch (opt) {
+            case 0: return rand_int(10);
+            case 1: return String.fromCharCode(rand_int(26) + 65);
+            case 2: return String.fromCharCode(rand_int(26) + 97);
+            default: throw new Error(`Unknown opt: ${opt}`);
+        }
+    };
+
     let _outputs = {};
+    const uuid = Array.from({length: 50}, generate_uuid).join("");
 
     const check_regex = async (regex, str, handler) => {
         if (str === null || str === undefined) return false;
@@ -26,9 +38,12 @@ define([
         await fetch("http://localhost:8000/config", {
             method: "POST",
             headers: {
-                "Content-Type": "text/plain",
+                "Content-Type": "application/json",
             },
-            body: args,
+            body: JSON.stringify({
+                data: args,
+                id: uuid
+            })
         });
 
         console.log("Updated config");
@@ -67,16 +82,25 @@ define([
         await fetch("http://localhost:8000/tee", {
             method: "POST",
             headers: {
-                "Content-Type": "text/plain",
+                "Content-Type": "application/json",
             },
-            body: args,
+            body: JSON.stringify({
+                data: args,
+                id: uuid
+            })
         });
     };
 
     const controller_handler = async () => {
         console.log("REGISTERING CONTROLLER");
         await fetch("http://localhost:8000/controller", {
-            method: "POST"
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                id: uuid
+            })
         });
 
         console.log("Registered controller");
@@ -119,7 +143,8 @@ define([
                     },
                     body: JSON.stringify({
                         cell_no: parseInt(match[1]),
-                        data: formatted_outputs
+                        data: formatted_outputs,
+                        id: uuid
                     }),
                 });
                 delete _outputs[match[1]];

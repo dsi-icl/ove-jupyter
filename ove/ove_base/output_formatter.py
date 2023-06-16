@@ -3,11 +3,12 @@ import json
 import typing
 
 from markdown import markdown
+from ove.ove_base.locks import LATEX_LOCK
+from ove.utils import get_dir, get_source
 from ove.ove_base.data_type import DataType
 from IPython.lib.latextools import latex_to_html
 from ove.ove_base.file_handler import FileHandler
 from ove.ove_base.asset_handler import AssetHandler
-from ove.utils import get_dir, get_source
 
 
 class OutputFormatter:
@@ -39,12 +40,13 @@ class OutputFormatter:
         return outline.replace("%%replace%%", html)
 
     def format_latex(self, latex: str) -> str:
-        latex = latex.replace("\\displaystyle ", "").replace("\\\\", "\\")
-        if "$$" not in latex:
-            latex = latex.replace("$", "$$")
-        latex = latex_to_html(latex)
-        outline = self.file_handler.read_file(f"{get_dir()}/ove_base/assets/latex_format.html")
-        return outline.replace("%%replace%%", latex)
+        with LATEX_LOCK:
+            latex = latex.replace("\\displaystyle ", "").replace("\\\\", "\\")
+            if "$$" not in latex:
+                latex = latex.replace("$", "$$")
+            latex = latex_to_html(latex)
+            outline = self.file_handler.read_file(f"{get_dir()}/ove_base/assets/latex_format.html")
+            return outline.replace("%%replace%%", latex)
 
     def format_html(self, html: str) -> str:
         html_format = "<!DOCTYPE html>\n<html lang=\"en\">"
