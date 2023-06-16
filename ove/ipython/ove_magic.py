@@ -130,7 +130,6 @@ class OVEMagic(Magics):
     @magic_arguments.argument("--cols", "-c", type=int, default="2", nargs="?")
     @magic_arguments.argument("--env", "-e", type=str, default=".env", nargs="?")
     @magic_arguments.argument("--out", "-o", type=str, default=".ove", nargs="?")
-    @magic_arguments.argument("--remove", "-rm", type=bool, default=True, nargs="?")
     @magic_arguments.argument("--mode", "-m", type=str, default="production", nargs="?")
     @line_magic
     def ove_config(self, line):

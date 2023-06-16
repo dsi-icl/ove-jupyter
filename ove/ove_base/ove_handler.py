@@ -29,7 +29,6 @@ class OVEHandler:
         parser.add_argument("-c", "--cols", type=int, default=2, nargs="?")
         parser.add_argument("-e", "--env", type=str, default=".env", nargs="?")
         parser.add_argument("-o", "--out", type=str, default=".ove", nargs="?")
-        parser.add_argument("-rm", "--remove", type=bool, default=True, nargs="?")
         parser.add_argument("-m", "--mode", type=str, default="production", choices=["development", "production"],
                             nargs="?")
         return parser
@@ -67,7 +66,6 @@ class OVEHandler:
 
     def ove_config(self, uuid: str, args: dict) -> None:
         self.load_config(uuid, args)
-        FileHandler().load_dir(self.config[uuid]["out"], self.config[uuid]["remove"])
 
     def parse_tee(self, data: str) -> dict:
         return self.tee_parser.parse_args(data.split(" "))
@@ -95,7 +93,7 @@ class OVEHandler:
             idx, data_type, data, metadata = output
             data_type = DataType(data_type)
             section = SectionBuilder(
-                self.config[uuid]["core"], asset_handler, output_formatter).build_section(
+                self.config[uuid]["core"], asset_handler, output_formatter).build_section(uuid,
                 data, geometry, args.cell_no, output_idx, len(outputs), self.config[uuid]["space"], data_type, metadata)
 
             section_id = RequestHandler(self.config[uuid]["mode"], self.config[uuid]["core"]).load_section(
@@ -110,15 +108,16 @@ class OVEHandler:
                     {"idx": idx, "url": f"{section['app']['url']}/control.html?oveSectionId={section_id}"})
 
         project = output_formatter.format_project(self.config[uuid]["sections"], self.config[uuid]["space"])
-        file_handler.write_json(project, filename=f"{self.config[uuid]['out']}/project.json")
+        file_handler.write_json(project, filename=f"{self.config[uuid]['out']}/project_{uuid}.json")
 
         if self.config[uuid]["mode"] == Mode.DEVELOPMENT:
             overview = output_formatter.format_overview(self.config[uuid]["space"],
                                                         f"{self.config[uuid]['host']}:{self.config[uuid]['port']}",
                                                         self.config[uuid]["core"])
-            file_handler.to_file(overview, filename=f"{self.config[uuid]['out']}/overview.html", file_mode="w")
+            file_handler.to_file(overview, filename=f"{self.config[uuid]['out']}/overview_{uuid}.html", file_mode="w")
 
         if self.config[uuid]["multi_controller"]:
-            ControllerBuilder(self.config[uuid]["out"], file_handler).generate_controller(self.config[uuid]["sections"])
+            ControllerBuilder(self.config[uuid]["out"], file_handler).generate_controller(uuid,
+                                                                                          self.config[uuid]["sections"])
 
         return controller_urls

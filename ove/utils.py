@@ -49,7 +49,6 @@ def load_base_config(args: dict) -> dict:
         "env": args.env.replace("\"", ""),
         "out": args.out.replace("\"", ""),
         "sections": {},
-        "remove": args.remove,
         "mode": Mode(args.mode),
         "multi_controller": False
     }

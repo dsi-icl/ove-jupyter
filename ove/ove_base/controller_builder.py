@@ -26,5 +26,5 @@ class ControllerBuilder:
         outline = self.file_handler.read_file(f"{get_dir()}/ove_base/assets/controller_format.html")
         return outline.replace("%%content%%", content).replace("%%start_url%%", start_url)
 
-    def generate_controller(self, sections: list[dict]) -> None:
-        self.file_handler.to_file(self._create_controller(sections), f"{self.out_dir}/control.html", file_mode="w")
+    def generate_controller(self, uuid: str, sections: list[dict]) -> None:
+        self.file_handler.to_file(self._create_controller(sections), f"{self.out_dir}/control_{uuid}.html", file_mode="w")
