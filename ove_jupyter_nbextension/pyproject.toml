@@ -1,0 +1,69 @@
+[build-system]
+requires = ["hatchling>=1.5.0", "hatch-jupyter-builder >=0.8.3"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ove_jupyter_nbextension"
+readme = "README.md"
+license = { file = "LICENSE" }
+version = "0.4.0"
+description = "Bringing the Open Visualisation Environment to Jupyter Notebook"
+keywords = ["Open", "Visualisation", "Environment", "Jupyter", "OVE"]
+requires-python = ">=3.8"
+classifiers = [
+    "Framework :: Jupyter",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+authors = [
+    {name = "Brython Caley-Davies", email = "bc2918@ic.ac.uk"}
+]
+
+pre-install-commands = [
+    "pip install ../ove_jupyter_utils"
+]
+
+dependencies = [
+    "python-dotenv",
+    "ove_jupyter_utils @ {root:uri}/../ove_jupyter_utils"
+]
+
+[project.scripts]
+jupyter-ove-jupyter-nbextension = "ove_jupyter_nbextension:launch_instance"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[project.urls]
+Homepage = "https://github.com/dsi-icl/ove-jupyter"
+
+[project.optional-dependencies]
+test = [
+    "jupyter_server>=2.0.1",
+    "coverage",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-jupyter[server]>=0.6.0"
+]
+
+[tool.hatch.build.hooks.version]
+path = "ove_jupyter_nbextension/_version.py"
+
+[tool.hatch.build.targets.wheel.shared-data]
+"jupyter-config" = "etc/jupyter"
+"ove_jupyter_nbextension/static" = "share/jupyter/nbextensions/ove_jupyter"
+
+[tool.hatch.build.hooks.jupyter-builder]
+dependencies = ["hatch-jupyter-builder"]
+
+[tool.jupyter-releaser.options]
+version_cmd = "hatch version"
+
+[tool.check-wheel-contents]
+ignore = ["W002"]
