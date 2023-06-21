@@ -119,7 +119,7 @@ define([
 
         const getCookie = name => document.cookie.match('\\b' + name + '=([^;]*)\\b')?.[1];
 
-        fetch(`/ove-jupyter/config`, {
+        fetch(`${body.data("baseUrl")}ove-jupyter/config`, {
             credentials: "same-origin",
             headers: {
                 "Authorization": `token ${body.data("jupyterApiToken")}`,
