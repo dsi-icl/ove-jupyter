@@ -9,3 +9,5 @@ def _jupyter_server_extension_points():
 
 
 launch_instance = OVEJupyterApp.launch_instance
+
+load_jupyter_server_extension = OVEJupyterApp.load_classic_server_extension
