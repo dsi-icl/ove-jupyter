@@ -95,7 +95,7 @@ define([
                         .on("click", event => {
                             event.preventDefault();
                             const baseUrl = window.location.href.replace(window.location.pathname, "");
-                            window.open(`${baseUrl}/ove-jupyter/static/control.html`)
+                            window.open(`${baseUrl}${$("body").data("baseUrl")}ove-jupyter/static/control.html`)
                         })
                     )
                     .append($("<button/>")
@@ -105,7 +105,7 @@ define([
                         .on("click", event => {
                             event.preventDefault();
                             const baseUrl = window.location.href.replace(window.location.pathname, "");
-                            window.open(`${baseUrl}/ove-jupyter/static/overview.html`)
+                            window.open(`${baseUrl}${$("body").data("baseUrl")}ove-jupyter/static/overview.html`)
                         })
                     )
                 )
