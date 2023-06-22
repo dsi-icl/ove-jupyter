@@ -4,6 +4,8 @@ import pathlib
 import tornado
 import argparse
 
+from traceback import format_exc
+
 from .handlers import OVEJupyterHandler, ConfigHandler, TeeHandler, StaticHandler, ModeHandler
 from jupyter_server.extension.application import ExtensionApp
 from traitlets import Int
@@ -33,12 +35,15 @@ class OVEJupyterApp(ExtensionApp):
             self.ove_handler.load_config(argparse.Namespace(**config))
 
         def tee_handler(data: dict):
-            config = data["config"]
-            config["from_"] = config["from"]
-            config["to_"] = config["to"]
-            config.pop("from")
-            config.pop("to")
-            return json.dumps(self.ove_handler.tee(argparse.Namespace(**data["config"]), data["outputs"]))
+            try:
+                config = data["config"]
+                config["from_"] = config["from"]
+                config["to_"] = config["to"]
+                config.pop("from")
+                config.pop("to")
+                return json.dumps(self.ove_handler.tee(argparse.Namespace(**data["config"]), data["outputs"]))
+            except Exception as e:
+                return json.dumps({"error": str(e), "trace": format_exc()})
 
         def mode_handler():
             return self.ove_handler.config["mode"]
