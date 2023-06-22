@@ -38,44 +38,75 @@ define([
             keyboard_manager: Jupyter.notebook.keyboard_manager,
             body: $('<form/>').attr("id", "ove-modal-body")
                 .append($("<div/>")
-                    .addClass("dropdown")
-                    .append($("<button/>")
-                        .addClass("btn btn-secondary dropdown-toggle")
-                        .attr("type", "button")
-                        .attr("id", "dropdown-menu-button")
-                        .attr("data-toggle", "dropdown")
-                        .attr("aria-haspopup", "true")
-                        .attr("aria-expanded", "false")
-                        .text("Config type - global")
-                    )
+                    .attr("id", "ove-control-container")
+                    .attr("style", "display: flex;")
                     .append($("<div/>")
-                        .addClass("dropdown-menu")
-                        .attr("aria-labelledby", "dropdown-menu-button")
+                        .addClass("dropdown")
                         .append($("<button/>")
-                            .addClass("dropdown-item active")
-                            .attr("id", "ove-config-global")
-                            .on("click", event => {
-                                event.preventDefault();
-                                $("#ove-config-global").addClass("active");
-                                $("#ove-config-cell").removeClass("active");
-                                $("#dropdown-menu-button").text("Config type - global");
-
-                                $("#ove-config").text(global_config_);
-                            })
-                            .text("Global")
+                            .addClass("btn btn-secondary dropdown-toggle")
+                            .append($("<span/>").addClass("caret"))
+                            .attr("type", "button")
+                            .attr("id", "dropdown-menu-button")
+                            .attr("data-toggle", "dropdown")
+                            .attr("aria-haspopup", "true")
+                            .attr("aria-expanded", "false")
+                            .text("Config type - global")
                         )
-                        .append($("<button/>")
-                            .addClass("dropdown-item")
-                            .attr("id", "ove-config-cell")
-                            .on("click", event => {
-                                event.preventDefault();
-                                $("#ove-config-cell").addClass("active");
-                                $("#ove-config-global").removeClass("active");
-                                $("#dropdown-menu-button").text("Config type - cell");
+                        .append($("<ul/>")
+                            .addClass("dropdown-menu")
+                            .attr("aria-labelledby", "dropdown-menu-button")
+                            .append($("<li/>")
+                                .append($("<button/>")
+                                    .addClass("dropdown-item active")
+                                    .attr("style", "width: 100%;")
+                                    .attr("id", "ove-config-global")
+                                    .on("click", event => {
+                                        event.preventDefault();
+                                        $("#ove-config-global").addClass("active");
+                                        $("#ove-config-cell").removeClass("active");
+                                        $("#dropdown-menu-button").text("Config type - global");
 
-                                $("#ove-config").text(cell_config_);
-                            })
-                            .text("Cell"))
+                                        $("#ove-config").text(global_config_);
+                                    })
+                                    .text("Global")
+                                )
+                            )
+                            .append($("<li/>")
+                                .append($("<button/>")
+                                    .addClass("dropdown-item")
+                                    .attr("id", "ove-config-cell")
+                                    .attr("style", "width: 100%;")
+                                    .on("click", event => {
+                                        event.preventDefault();
+                                        $("#ove-config-cell").addClass("active");
+                                        $("#ove-config-global").removeClass("active");
+                                        $("#dropdown-menu-button").text("Config type - cell");
+
+                                        $("#ove-config").text(cell_config_);
+                                    })
+                                    .text("Cell"))
+                            )
+                        )
+                    )
+                    .append($("<button/>")
+                        .addClass("btn")
+                        .append($("<i/>").addClass("fa fa-gamepad"))
+                        .attr("id", "ove-controller")
+                        .on("click", event => {
+                            event.preventDefault();
+                            const baseUrl = window.location.href.replace(window.location.pathname, "");
+                            window.open(`${baseUrl}/ove-jupyter/static/control.html`)
+                        })
+                    )
+                    .append($("<button/>")
+                        .addClass("btn")
+                        .append($("<i/>").addClass("fa fa-eye"))
+                        .attr("id", "ove-preview")
+                        .on("click", event => {
+                            event.preventDefault();
+                            const baseUrl = window.location.href.replace(window.location.pathname, "");
+                            window.open(`${baseUrl}/ove-jupyter/static/overview.html`)
+                        })
                     )
                 )
                 .append($("<label/>")
@@ -92,18 +123,16 @@ define([
                 'Save': {
                     class: 'btn-primary',
                     click: () => {
-                        const input = $("#ove-config").val();
-                        console.log(`Clicking modal button: ${input}`);
+                        const input = JSON.parse($("#ove-config").val());
                         const cell = Jupyter.notebook.get_selected_cell();
                         if ($("#ove-config-global").hasClass("active")) {
-                            console.log("Global config");
-                            Jupyter.notebook.metadata.ove_jupyter = JSON.parse(input);
-                            config_handler(JSON.parse(input)).catch(console.error);
+                            if (JSON.stringify(input) === global_config_) return;
+                            Jupyter.notebook.metadata.ove_jupyter = input;
+                            config_handler(input).catch(console.error);
                         } else {
-                            console.log("Cell config");
-                            cell.metadata.ove_jupyter = JSON.parse(input);
+                            if (JSON.stringify(input) === cell_config_) return;
+                            cell.metadata.ove_jupyter = input;
                         }
-                        console.log(JSON.stringify(cell));
                     }
                 }
             }
@@ -115,7 +144,6 @@ define([
 
     const config_handler = async config => {
         const body = $("body");
-        console.log(`OVE CONFIG: ${JSON.stringify(config)}`);
         await fetch(`${body.data("baseUrl")}ove-jupyter/config`, {
             method: "POST",
             headers: {
@@ -127,7 +155,7 @@ define([
             credentials: "same-origin"
         });
 
-        console.log("Updated config");
+        console.log("Updated ove-jupyter config");
     };
 
     const format_outputs = outputs => outputs.flatMap((output, output_idx) => {
@@ -160,8 +188,6 @@ define([
 
     const tee_handler = async (config, outputs) => {
         const body = $("body");
-        console.log(`TEE CONFIG: ${JSON.stringify(config)}`);
-        console.log(`TEE OUTPUTS: ${JSON.stringify(outputs)}`);
         await fetch(`${body.data("baseUrl")}ove-jupyter/tee`, {
             method: "POST",
             headers: {
@@ -193,20 +219,16 @@ define([
             }
         });
 
-        Jupyter.notebook.events.on("execution_request.Kernel", function () {
-            console.log("Executing OVE Jupyter");
-        });
-
         Jupyter.toolbar.add_buttons_group([
             Jupyter.keyboard_manager.actions.register({
                 help: 'Edit ove-jupyter config data',
-                icon: 'fa-cogs',
+                icon: 'fa-solid fa-desktop',
                 handler: create_dialog
             }, 'edit_ove_config_data', 'OVE')
         ]);
 
         if (Jupyter.notebook.metadata.ove_jupyter !== undefined) {
-            console.log("Loading config");
+            console.log("Loading ove-jupyter config");
             config_handler(global_config).catch(console.error);
         }
     };

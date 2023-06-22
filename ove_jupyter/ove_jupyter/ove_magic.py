@@ -41,9 +41,9 @@ class OVEMagic(Magics):
     def inject(self, controller_injection: typing.Optional[str] = None):
         if controller_injection is None:
             return None
-        mode = requests.get(f"{self.config_['host']}/ove-jupyter/mode").json()["mode"]
-        if mode == "production":
-            return self.get_injected(IFrame(controller_injection, "100%", "400px"))
+
+        if self.ove_handler.config["mode"].value == "production":
+            return self.get_injected(IFrame(controller_injection, "100%", "800px"))
         else:
             print(f"Injecting: {controller_injection}")
             return None
@@ -57,7 +57,7 @@ class OVEMagic(Magics):
             if len(output["data"]) == 0:
                 continue
 
-            injected["output_idx"] = [io._outputs[output_idx]]
+            injected[output_idx] = [io._outputs[output_idx]]
 
             display_mode = IPythonDisplayType.from_ipython_output(io._outputs[output_idx])
             if display_mode is not None:
