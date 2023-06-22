@@ -17,19 +17,16 @@ from ove_jupyter_utils.utils import load_base_config, OVEException, xorExist, ge
 from ove_jupyter_utils.locks import LATEX_LOCK
 from ove_jupyter_utils.server import create_server
 from ove_jupyter_utils.file_handler import FileHandler
+from ove_jupyter_utils.ove_handler import OVEHandler
 from .ipython_display_type import IPythonDisplayType, to_data_type
 
 
 @magics_class
 class OVEMagic(Magics):
     def __init__(self, shell):
-        # You must call the parent constructor
         super(OVEMagic, self).__init__(shell)
-        self.uuid = str(uuid.uuid4())
-        logging.getLogger("requests").setLevel(logging.WARNING)
-        logging.getLogger("urllib3").setLevel(logging.WARNING)
-        self.config_ = {}
-        self.server_thread = None
+        self.ove_handler = OVEHandler()
+        self.host = None
 
     def get_output(self, cell: typing.Any) -> CapturedIO:
         with capture_output(True, True, True) as io:
@@ -44,7 +41,7 @@ class OVEMagic(Magics):
     def inject(self, controller_injection: typing.Optional[str] = None):
         if controller_injection is None:
             return None
-        mode = requests.get(f"{self.config_['host']}:{self.config_['port']}/mode").json()["mode"]
+        mode = requests.get(f"{self.config_['host']}/ove-jupyter/mode").json()["mode"]
         if mode == "production":
             return self.get_injected(IFrame(controller_injection, "100%", "400px"))
         else:
@@ -78,16 +75,6 @@ class OVEMagic(Magics):
 
         return formatted_outputs, injected
 
-    def load_server(self, server_thread: multiprocessing.Process) -> None:
-        # pass
-        if self.server_thread is not None:
-            self.server_thread.terminate()
-
-        self.server_thread = multiprocessing.Process(target=create_server,
-                                                     args=(8000, self.config_["out"], self.config_["env"], True))
-        self.server_thread.start()
-        FileHandler().copy(f"{get_dir()}/ove_base/file_server.py", f"{self.config_['out']}/file_server.py")
-
     @magic_arguments.magic_arguments()
     @magic_arguments.argument("cell_no", type=int)
     @magic_arguments.argument("--row", "-r", type=int, default=None, nargs="?")
@@ -102,12 +89,10 @@ class OVEMagic(Magics):
     @cell_magic
     def tee(self, line, cell):
         args = magic_arguments.parse_argstring(self.tee, line)
-        requests.post(f"{self.config_['host']}:{self.config_['port']}/tee", json={"data": vars(args), "id": self.uuid})
 
         io = self.get_output(cell)
         formatted_outputs, injected = self.format_ipython(io)
-        controller_urls = requests.post(f"{self.config_['host']}:{self.config_['port']}/output",
-                                        json={"data": formatted_outputs, "id": self.uuid}).json()
+        controller_urls = self.ove_handler.tee(args, formatted_outputs)
 
         for data in controller_urls:
             idx = int(data["idx"])
@@ -130,18 +115,12 @@ class OVEMagic(Magics):
     @magic_arguments.argument("--env", "-e", type=str, default=".env", nargs="?")
     @magic_arguments.argument("--out", "-o", type=str, default=".ove", nargs="?")
     @magic_arguments.argument("--mode", "-m", type=str, default="production", nargs="?")
+    @magic_arguments.argument("--remove", "-rm", type=bool, default=True, nargs="?")
+    @magic_arguments.argument("--multi_controller", "-mc", type=bool, default=False, nargs="?")
     @line_magic
     def ove_config(self, line):
         args = magic_arguments.parse_argstring(self.ove_config, line)
         if LATEX_LOCK is None:
             raise Exception("No locking available")
-        self.config_ = load_base_config(args)
-        self.load_server(self.server_thread)
-        time.sleep(1)
-
-        requests.post(f"{self.config_['host']}:{self.config_['port']}/config",
-                      json={"data": vars(args), "id": self.uuid})
-
-    @line_magic
-    def ove_controller(self, line):
-        requests.post(f"{self.config_['host']}:{self.config_['port']}/controller", json={"id": self.uuid})
+        self.host = load_base_config(args)["host"]
+        self.ove_handler.load_config(args)

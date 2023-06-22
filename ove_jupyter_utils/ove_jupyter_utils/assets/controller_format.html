@@ -89,11 +89,22 @@
             %%content%%
         </ul>
     </nav>
-    <iframe id="content" src="%%start_url%%" style="width: 85vw; height: 100vh"></iframe>
+    <iframe id="content" src="" style="width: 85vw; height: 100vh"></iframe>
 </main>
 <script>
-    function changeContent(url) {
-        document.getElementById("content").src = url
+    let sections = [];
+    window.addEventListener("DOMContentLoaded", async () => {
+        sections = await (await fetch("%%ove_core%%/sections")).json();
+        sections.sort((a, b) => {
+            if (Number(a.id) < Number(b.id)) return -1;
+            if (Number(a.id) > Number(b.id)) return 1;
+            return 0;
+        });
+        document.getElementById("content").src = `${sections[0].app.url}/control.html?oveSectionId=${sections[0].id}`;
+    });
+
+    function changeContent(id) {
+        document.getElementById("content").src = `${sections[id].app.url}/control.html?oveSectionId=${sections[id].id}`;
     }
 </script>
 </body>

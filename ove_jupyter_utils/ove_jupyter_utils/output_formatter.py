@@ -22,22 +22,22 @@ class OutputFormatter:
             basemap = metadata["url_template"].replace("{basemap_id}", f"{metadata['layer_options']['basemap_id']}")
         else:
             basemap = metadata["url_template"]
-        outline = self.file_handler.read_file(f"{get_dir()}/ove_base/assets/geojson_format.json")
+        outline = self.file_handler.read_file(f"{get_dir()}/assets/geojson_format.json")
         return json.loads(outline.replace("%%basemap%%", basemap).replace("%%geojson%%", json.dumps(geojson)))
 
     def format_dict(self, obj: typing.Union[dict, list]) -> str:
-        outline = self.file_handler.read_file(f"{get_dir()}/ove_base/assets/dict_format.html")
+        outline = self.file_handler.read_file(f"{get_dir()}/assets/dict_format.html")
         return outline.replace("%%replace%%", json.dumps(obj, indent=4))
 
     def format_markdown(self, md: str) -> str:
         self.asset_handler.handle_markdown_css()
-        outline = self.file_handler.read_file(f"{get_dir()}/ove_base/assets/markdown_format.html")
+        outline = self.file_handler.read_file(f"{get_dir()}/assets/markdown_format.html")
         return outline.replace("%%replace%%", markdown(md))
 
     def format_dataframe(self, html: str) -> str:
         html = html.replace("border=\"1\" ", "").replace(" style=\"text-align: right;\"", "")
         html = re.sub(r"<style .*>(?:.|\r|\n|\t)*</style>", "", html)
-        outline = self.file_handler.read_file(f"{get_dir()}/ove_base/assets/dataframe_format.html")
+        outline = self.file_handler.read_file(f"{get_dir()}/assets/dataframe_format.html")
         return outline.replace("%%replace%%", html)
 
     def format_latex(self, latex: str) -> str:
@@ -46,7 +46,7 @@ class OutputFormatter:
             if "$$" not in latex:
                 latex = latex.replace("$", "$$")
             latex = latex_to_html(latex)
-            outline = self.file_handler.read_file(f"{get_dir()}/ove_base/assets/latex_format.html")
+            outline = self.file_handler.read_file(f"{get_dir()}/assets/latex_format.html")
             return outline.replace("%%replace%%", latex)
 
     def format_html(self, html: str) -> str:
@@ -54,16 +54,16 @@ class OutputFormatter:
         if len(html) > len(html_format) and html[:len(html_format)] == html_format:
             return html
 
-        outline = self.file_handler.read_file(f"{get_dir()}/ove_base/assets/html_format.html")
+        outline = self.file_handler.read_file(f"{get_dir()}/assets/html_format.html")
         return outline.replace("%%replace%%", html)
 
     def format_project(self, sections: list[dict], space: str) -> dict:
-        outline = self.file_handler.read_file(f"{get_dir()}/ove_base/assets/project.json")
+        outline = self.file_handler.read_file(f"{get_dir()}/assets/project.json")
         return json.loads(outline.replace("%%space%%", space).replace("%%sections%%", json.dumps(
             [section["data"] for section in sections.values()])))
 
     def format_overview(self, space: str, host: str, core: str):
-        outline = self.file_handler.read_file(f"{get_dir()}/ove_base/assets/overview.html")
+        outline = self.file_handler.read_file(f"{get_dir()}/assets/overview.html")
         return outline.replace("%%space%%", space).replace(
             "%%sections%%", f"{host}/project.json").replace("%%spaces%%", f"{core}/spaces")
 

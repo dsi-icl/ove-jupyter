@@ -1,61 +1,137 @@
+// noinspection JSUnresolvedReference
+
 define([
     "jquery",
     "base/js/namespace",
     "notebook/js/outputarea",
-    "./display_type"
-], ($, Jupyter, oa, dt) => {
-    const generate_uuid = () => {
-        const rand_int = (max) => Math.floor(Math.random() * max);
-        const opt = rand_int(3);
-        switch (opt) {
-            case 0:
-                return rand_int(10);
-            case 1:
-                return String.fromCharCode(rand_int(26) + 65);
-            case 2:
-                return String.fromCharCode(rand_int(26) + 97);
-            default:
-                throw new Error(`Unknown opt: ${opt}`);
-        }
+    "./display_type",
+    'base/js/dialog'
+], ($, Jupyter, oa, dt, dialog) => {
+    const global_config = Jupyter.notebook.metadata.ove_jupyter || {
+        rows: 2,
+        cols: 2,
+        space: "LocalFour",
+        mode: "production",
+        multi_controller: false,
+        remove: true,
+        out: ".ove",
+        env: ".env"
     };
+    const create_dialog = () => {
+        const global_config_ = JSON.stringify(global_config, undefined, 4);
+        const cell_config_ = JSON.stringify(Jupyter.notebook.get_selected_cell().metadata.ove_jupyter || {
+            cell_no: -1,
+            row: null,
+            col: null,
+            width: null,
+            height: null,
+            x: null,
+            y: null,
+            from: null,
+            to: null,
+            split: null,
+        }, undefined, 4);
+        const modal = dialog.modal({
+            show: false,
+            title: 'Edit OVE config',
+            notebook: Jupyter.notebook,
+            keyboard_manager: Jupyter.notebook.keyboard_manager,
+            body: $('<form/>').attr("id", "ove-modal-body")
+                .append($("<div/>")
+                    .addClass("dropdown")
+                    .append($("<button/>")
+                        .addClass("btn btn-secondary dropdown-toggle")
+                        .attr("type", "button")
+                        .attr("id", "dropdown-menu-button")
+                        .attr("data-toggle", "dropdown")
+                        .attr("aria-haspopup", "true")
+                        .attr("aria-expanded", "false")
+                        .text("Config type - global")
+                    )
+                    .append($("<div/>")
+                        .addClass("dropdown-menu")
+                        .attr("aria-labelledby", "dropdown-menu-button")
+                        .append($("<button/>")
+                            .addClass("dropdown-item active")
+                            .attr("id", "ove-config-global")
+                            .on("click", event => {
+                                event.preventDefault();
+                                $("#ove-config-global").addClass("active");
+                                $("#ove-config-cell").removeClass("active");
+                                $("#dropdown-menu-button").text("Config type - global");
 
-    let _outputs = {};
-    const uuid = Array.from({length: 50}, generate_uuid).join("");
+                                $("#ove-config").text(global_config_);
+                            })
+                            .text("Global")
+                        )
+                        .append($("<button/>")
+                            .addClass("dropdown-item")
+                            .attr("id", "ove-config-cell")
+                            .on("click", event => {
+                                event.preventDefault();
+                                $("#ove-config-cell").addClass("active");
+                                $("#ove-config-global").removeClass("active");
+                                $("#dropdown-menu-button").text("Config type - cell");
 
-    const check_regex = async (regex, str, handler) => {
-        if (str === null || str === undefined) return false;
-        const match = str.match(regex);
-        if (match !== null) {
-            if (handler !== null && handler !== undefined) {
-                if (match.length > 1) {
-                    await handler(match[1]);
-                } else {
-                    await handler();
+                                $("#ove-config").text(cell_config_);
+                            })
+                            .text("Cell"))
+                    )
+                )
+                .append($("<label/>")
+                    .attr("for", "ove-config")
+                )
+                .append($("<textarea/>")
+                    .attr("id", "ove-config")
+                    .attr("name", "ove-config")
+                    .attr("rows", "20")
+                    .attr("cols", "50")
+                    .text(global_config_)
+                ),
+            buttons: {
+                'Save': {
+                    class: 'btn-primary',
+                    click: () => {
+                        const input = $("#ove-config").val();
+                        console.log(`Clicking modal button: ${input}`);
+                        const cell = Jupyter.notebook.get_selected_cell();
+                        if ($("#ove-config-global").hasClass("active")) {
+                            console.log("Global config");
+                            Jupyter.notebook.metadata.ove_jupyter = JSON.parse(input);
+                            config_handler(JSON.parse(input)).catch(console.error);
+                        } else {
+                            console.log("Cell config");
+                            cell.metadata.ove_jupyter = JSON.parse(input);
+                        }
+                        console.log(JSON.stringify(cell));
+                    }
                 }
             }
-            return [true, match];
-        }
-        return [false, match];
+        })
+            .attr('id', 'ove_jupyter_modal');
+
+        modal.modal('show');
     };
 
-    const config_handler = async args => {
-        console.log(`OVE CONFIG: ${args}`);
-        await fetch("http://localhost:8000/config", {
+    const config_handler = async config => {
+        const body = $("body");
+        console.log(`OVE CONFIG: ${JSON.stringify(config)}`);
+        await fetch(`${body.data("baseUrl")}ove-jupyter/config`, {
             method: "POST",
             headers: {
+                "Authorization": `token ${body.data("jupyterApiToken")}`,
+                "X-XSRFToken": getCookie("_xsrf"),
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-                data: args,
-                id: uuid
-            })
+            body: JSON.stringify(config),
+            credentials: "same-origin"
         });
 
         console.log("Updated config");
     };
 
     const format_outputs = outputs => outputs.flatMap((output, output_idx) => {
-        if (Object.keys(output.data).length === 0) {
+        if (output.data === null || output.data === undefined || Object.keys(output.data).length === 0) {
             return [];
         }
 
@@ -82,125 +158,60 @@ define([
         });
     });
 
-    const tee_handler = async args => {
-        console.log(`TEE CONFIG: ${args}`);
-        await fetch("http://localhost:8000/tee", {
+    const tee_handler = async (config, outputs) => {
+        const body = $("body");
+        console.log(`TEE CONFIG: ${JSON.stringify(config)}`);
+        console.log(`TEE OUTPUTS: ${JSON.stringify(outputs)}`);
+        await fetch(`${body.data("baseUrl")}ove-jupyter/tee`, {
             method: "POST",
             headers: {
+                "Authorization": `token ${body.data("jupyterApiToken")}`,
+                "X-XSRFToken": getCookie("_xsrf"),
                 "Content-Type": "application/json",
             },
+            credentials: "same-origin",
             body: JSON.stringify({
-                data: args,
-                id: uuid
+                config,
+                outputs
             })
         });
     };
-
-    const controller_handler = async () => {
-        console.log("REGISTERING CONTROLLER");
-        await fetch("http://localhost:8000/controller", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                id: uuid
-            })
-        });
-
-        console.log("Registered controller");
-    };
+    const getCookie = name => document.cookie.match('\\b' + name + '=([^;]*)\\b')?.[1];
 
     const initialize = () => {
         console.log("Initializing OVE Jupyter");
-        const body = $("body");
-
-        console.log(`Base URL: ${body.data("baseUrl")}`);
-
-        const getCookie = name => document.cookie.match('\\b' + name + '=([^;]*)\\b')?.[1];
-
-        fetch(`${body.data("baseUrl")}ove-jupyter/config`, {
-            credentials: "same-origin",
-            headers: {
-                "Authorization": `token ${body.data("jupyterApiToken")}`,
-                "X-XSRFToken": getCookie("_xsrf")
-            },
-            method: "POST",
-            body: JSON.stringify({id: 1})
-        }).then(console.log).catch(console.error);
-        console.log(`JUPYTER API TOKEN: ${body.data("jupyterApiToken")}`);
-
-        Jupyter.notebook.events.on("execute.CodeCell", async function (event, {cell}) {
-            console.log("Executing cell");
-            try {
-                const data = JSON.parse(JSON.stringify(cell));
-                const config_regex = /^# ?ove_config ([^\n]*)/;
-                const controller_regex = /^# ?ove_controller\n?/;
-
-                await check_regex(config_regex, data?.source, config_handler);
-                await check_regex(controller_regex, data?.source, controller_handler);
-            } catch (e) {
-                console.log(e);
-            }
-        });
 
         Jupyter.notebook.events.on("finished_execute.CodeCell", async function (event, {cell}) {
             try {
-                const formatted_cell = JSON.parse(JSON.stringify(cell));
-                const [, match] = await check_regex(/# ?tee (\d+)(?: (.+))?/, formatted_cell?.source);
-                if (match === null || match.length <= 1) {
-                    return
-                }
-                console.log(`Finished executing cell: ${match[1]}`);
-
-                await tee_handler(match.slice(1).filter(x => x !== null && x !== undefined).join(" "));
-
-                const formatted_outputs = format_outputs(_outputs[match[1]]);
-                console.log(JSON.stringify(formatted_outputs));
-                await fetch("http://localhost:8000/output", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        cell_no: parseInt(match[1]),
-                        data: formatted_outputs,
-                        id: uuid
-                    }),
-                });
-                delete _outputs[match[1]];
+                const metadata = cell.metadata.ove_jupyter;
+                if (metadata === null || metadata === undefined) return;
+                const outputs = JSON.parse(JSON.stringify(cell))["outputs"];
+                const formatted_outputs = format_outputs(outputs);
+                tee_handler(metadata, formatted_outputs).catch(console.error);
             } catch (e) {
-                _outputs = {};
                 console.log(e);
             }
         });
 
-        // noinspection JSUnusedGlobalSymbols
-        oa.OutputArea.prototype.handle_output = async function () {
-            console.log("Handling output");
-            try {
-                const cell = JSON.parse(JSON.stringify(this.element.closest(".cell").data("cell")));
-                const [, match] = await check_regex(/# ?tee (\d+)(?: (.+))?/, cell.source);
-                if (match !== null && match.length > 1) {
-                    if (_outputs[match[1]] !== undefined) {
-                        _outputs[match[1]].push(arguments["0"]?.content);
-                    } else {
-                        _outputs[match[1]] = [arguments["0"]?.content];
-                    }
-                }
-            } catch (e) {
-                console.log(e);
-            }
+        Jupyter.notebook.events.on("execution_request.Kernel", function () {
+            console.log("Executing OVE Jupyter");
+        });
 
-            this.append_output({
-                output_type: "display_data",
-                metadata: {},
-                data: {}
-            });
-        };
+        Jupyter.toolbar.add_buttons_group([
+            Jupyter.keyboard_manager.actions.register({
+                help: 'Edit ove-jupyter config data',
+                icon: 'fa-cogs',
+                handler: create_dialog
+            }, 'edit_ove_config_data', 'OVE')
+        ]);
+
+        if (Jupyter.notebook.metadata.ove_jupyter !== undefined) {
+            console.log("Loading config");
+            config_handler(global_config).catch(console.error);
+        }
     };
 
-    const load_ipython_extension = () => Jupyter.notebook.config.loaded.then(initialize).catch(() => console.log("Error loading ove-jupyter"));
+    const load_ipython_extension = () => Jupyter.notebook.config.loaded.then(initialize).catch(e => console.error(`Error loading ove-jupyter: ${e}`));
 
     // noinspection JSUnusedGlobalSymbols
     return {

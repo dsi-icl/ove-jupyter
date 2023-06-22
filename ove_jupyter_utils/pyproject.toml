@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "ove_jupyter_utils"
 readme = "README.md"
 license = { file = "LICENSE" }
-version = "0.4.0"
+version = "0.5.0"
 description = "Utils package for ove-jupyter"
 keywords = ["Open", "Visualisation", "Environment", "Jupyter", "OVE"]
 requires-python = ">=3.8"
@@ -26,7 +26,8 @@ authors = [
 
 dependencies = [
     "python-dotenv==1.0.*",
-    "markdown==3.4.*"
+    "markdown==3.4.*",
+    "requests==2.31.*"
 ]
 
 [project.urls]

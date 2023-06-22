@@ -2,7 +2,7 @@ import re
 import typing
 
 from enum import Enum
-from ove.ove_base.data_type import DataType
+from ove_jupyter_utils.data_type import DataType
 
 
 class IPythonDisplayType(Enum):
