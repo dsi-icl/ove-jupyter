@@ -62,6 +62,6 @@ class OVEHandler:
             file_handler.to_file(overview, filename=f"{self.config['out']}/overview.html", file_mode="w")
 
         if self.config["multi_controller"]:
-            ControllerBuilder(self.config["out"], file_handler).generate_controller(self.config["sections"], self.config["core"])
+            ControllerBuilder(self.config["out"], file_handler).generate_controller(self.config["sections"], self.config["core"], self.config["mode"].value)
 
         return controller_urls
