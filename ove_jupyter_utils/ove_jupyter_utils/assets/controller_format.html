@@ -92,15 +92,19 @@
     <iframe id="content" src="" style="width: 85vw; height: 100vh"></iframe>
 </main>
 <script>
-    let sections = [];
+    let sections = %%sections%%;
     window.addEventListener("DOMContentLoaded", async () => {
-        sections = await (await fetch("%%ove_core%%/sections")).json();
-        sections.sort((a, b) => {
-            if (Number(a.id) < Number(b.id)) return -1;
-            if (Number(a.id) > Number(b.id)) return 1;
-            return 0;
-        });
-        document.getElementById("content").src = `${sections[0].app.url}/control.html?oveSectionId=${sections[0].id}`;
+        if (sections.length === 0) {
+            sections = await (await fetch("%%ove_core%%/sections")).json();
+            sections.sort((a, b) => {
+                if (Number(a.id) < Number(b.id)) return -1;
+                if (Number(a.id) > Number(b.id)) return 1;
+                return 0;
+            });
+            document.getElementById("content").src = `${sections[0].app.url}/control.html?oveSectionId=${sections[0].id}`;
+        } else {
+            document.getElementById("content").src = sections[0].app.states.load.url;
+        }
     });
 
     function changeContent(id) {

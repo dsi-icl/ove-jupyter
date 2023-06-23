@@ -1,3 +1,5 @@
+import json
+
 from .file_handler import FileHandler
 from .utils import get_app_url, format_cell_name, get_dir
 
@@ -17,7 +19,7 @@ class ControllerBuilder:
     def _create_controller(self, sections: list[dict], core: str) -> str:
         content = self._create_controller_nav_content(sections)
         outline = self.file_handler.read_file(f"{get_dir()}/assets/controller_format.html")
-        return outline.replace("%%content%%", content).replace("%%ove_core%%", core)
+        return outline.replace("%%content%%", content).replace("%%ove_core%%", core).replace("%%sections%%", json.dumps([x["data"] for x in sections.values()]))
 
     def generate_controller(self, sections: list[dict], core: str) -> None:
         self.file_handler.to_file(self._create_controller(sections, core), f"{self.out_dir}/control.html", file_mode="w")

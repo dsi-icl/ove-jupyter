@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "ove_jupyter"
 readme = "README.md"
 license = { file = "LICENSE" }
-version = "0.5.0"
+version = "0.6.0"
 description = "Bringing the Open Visualisation Environment to Jupyter"
 keywords = ["Open", "Visualisation", "Environment", "Jupyter", "OVE"]
 requires-python = ">=3.8"
