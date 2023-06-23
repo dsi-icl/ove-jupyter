@@ -50,6 +50,7 @@ def load_base_config(args: dict) -> dict:
         "out": args.out.replace("\"", ""),
         "sections": {},
         "mode": Mode(args.mode),
-        "multi_controller": args.multi_controller
+        "multi_controller": args.multi_controller,
+        "remove": args.remove
     }
     return {**{k[4:].lower(): v for k, v in dotenv_values(config["env"]).items() if "OVE_" in k}, **config}

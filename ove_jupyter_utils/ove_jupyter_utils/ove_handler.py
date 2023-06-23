@@ -23,6 +23,7 @@ class OVEHandler:
         ove_handler = RequestHandler(self.config["mode"], self.config["core"])
         self.config["geometry"] = ove_handler.get_geometry(self.config["space"])
         ove_handler.clear_space(self.config["space"])
+        FileHandler().load_dir(self.config["out"], self.config["remove"])
 
     def tee(self, cell_config: Namespace, outputs: list[list]) -> list[dict]:
         validator = LayoutValidator()
