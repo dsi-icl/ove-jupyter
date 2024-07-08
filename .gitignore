@@ -644,3 +644,4 @@ cython_debug/
 # Custom Rules
 **/.ove
 **/_version.py
+.idea/
