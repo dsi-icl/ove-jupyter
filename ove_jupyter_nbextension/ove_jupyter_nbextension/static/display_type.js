@@ -27,7 +27,7 @@ define([], function () {
 
     const DataType = {
         AUDIO: "audio",
-        DATAFRAME: "dataframe",
+        DATATABLE: "data-table",
         GEOJSON: "geojson",
         HTML: "html",
         JPEG: "jpg",
@@ -71,7 +71,7 @@ define([], function () {
         } else if (displayType !== null && (displayType === DisplayTypes.VIDEOS || displayType === DisplayTypes.YOUTUBE) && outputType.includes("text/html")) {
             return DataType.VIDEO;
         } else if (outputType.includes("text/html")) {
-            return data.includes("dataframe") ? DataType.DATAFRAME : DataType.HTML;
+            return data.includes("dataframe") ? DataType.DATATABLE : DataType.HTML;
         } else if (outputType.includes("image/png")) {
             return DataType.PNG;
         } else if (outputType.includes("image/jpeg")) {

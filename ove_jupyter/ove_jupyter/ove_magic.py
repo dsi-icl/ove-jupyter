@@ -14,7 +14,7 @@ from IPython.utils.capture import CapturedIO, capture_output
 from IPython.core.magic import magics_class, Magics, cell_magic, line_magic
 
 from ove_jupyter_utils.utils import load_base_config, OVEException, xorExist, get_dir
-from ove_jupyter_utils.locks import LATEX_LOCK
+from ove_jupyter_utils.locks import LATEX_LOCK, MARKDOWN_LOCK
 from ove_jupyter_utils.server import create_server
 from ove_jupyter_utils.file_handler import FileHandler
 from ove_jupyter_utils.ove_handler import OVEHandler
@@ -77,18 +77,28 @@ class OVEMagic(Magics):
 
     @magic_arguments.magic_arguments()
     @magic_arguments.argument("cell_no", type=int)
-    @magic_arguments.argument("--row", "-r", type=int, default=None, nargs="?")
-    @magic_arguments.argument("--col", "-c", type=int, default=None, nargs="?")
-    @magic_arguments.argument("--width", "-w", type=int, default=None, nargs="?")
-    @magic_arguments.argument("--height", "-h", type=int, default=None, nargs="?")
-    @magic_arguments.argument("--x", "-x", type=int, default=None, nargs="?")
-    @magic_arguments.argument("--y", "-y", type=int, default=None, nargs="?")
-    @magic_arguments.argument("--from", "-f", type=int, default=None, nargs=2, dest="from_")
-    @magic_arguments.argument("--to", "-t", type=int, default=None, nargs=2, dest="to_")
-    @magic_arguments.argument("--split", "-s", type=str, default=None, nargs="?")
+    @magic_arguments.argument("--row", "-r", type=int, default=None, nargs="*")
+    @magic_arguments.argument("--col", "-c", type=int, default=None, nargs="*")
+    @magic_arguments.argument("--width", "-w", type=str, default=None, nargs="*")
+    @magic_arguments.argument("--height", "-h", type=str, default=None, nargs="*")
+    @magic_arguments.argument("--x", "-x", type=str, default=None, nargs="*")
+    @magic_arguments.argument("--y", "-y", type=str, default=None, nargs="*")
+    @magic_arguments.argument("--from", "-f", type=int, default=None, nargs="*", dest="from_")
+    @magic_arguments.argument("--to", "-t", type=int, default=None, nargs="*", dest="to_")
+    @magic_arguments.argument("--split", "-s", type=str, default="width", nargs="?")
     @cell_magic
     def tee(self, line, cell):
+        def optional_float(x):
+            if x is None:
+                return None
+            def opt(y):
+                if "/" in y:
+                    return float(y.split("/")[0]) / float(y.split("/")[1])
+                else:
+                    return float(y)
+            return [opt(y) for y in x]
         args = magic_arguments.parse_argstring(self.tee, line)
+        args.x, args.y, args.width, args.height = optional_float(args.x), optional_float(args.y), optional_float(args.width), optional_float(args.height)
 
         io = self.get_output(cell)
         formatted_outputs, injected = self.format_ipython(io)
@@ -109,9 +119,7 @@ class OVEMagic(Magics):
         io()
 
     @magic_arguments.magic_arguments()
-    @magic_arguments.argument("--space", "-s", type=str, default="LocalFour", nargs="?")
-    @magic_arguments.argument("--rows", "-r", type=int, default="2", nargs="?")
-    @magic_arguments.argument("--cols", "-c", type=int, default="2", nargs="?")
+    @magic_arguments.argument("--observatory", "-os", type=str, default="do", nargs="?")
     @magic_arguments.argument("--env", "-e", type=str, default=".env", nargs="?")
     @magic_arguments.argument("--out", "-o", type=str, default=".ove", nargs="?")
     @magic_arguments.argument("--mode", "-m", type=str, default="production", nargs="?")
@@ -120,7 +128,7 @@ class OVEMagic(Magics):
     @line_magic
     def ove_config(self, line):
         args = magic_arguments.parse_argstring(self.ove_config, line)
-        if LATEX_LOCK is None:
+        if LATEX_LOCK is None or MARKDOWN_LOCK is None:
             raise Exception("No locking available")
         self.host = load_base_config(args)["host"]
         self.ove_handler.load_config(args)

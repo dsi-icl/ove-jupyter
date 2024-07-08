@@ -1,4 +1,5 @@
 import re
+import uuid
 
 from argparse import ArgumentParser, Namespace
 
@@ -10,7 +11,6 @@ from .request_handler import RequestHandler
 from .section_builder import SectionBuilder
 from .layout_validator import LayoutValidator
 from .output_formatter import OutputFormatter
-from .controller_builder import ControllerBuilder
 from .utils import load_base_config, Mode, get_dir
 
 
@@ -20,49 +20,56 @@ class OVEHandler:
 
     def load_config(self, config: Namespace) -> dict:
         self.config = load_base_config(config)
-        ove_handler = RequestHandler(self.config["mode"], self.config["core"])
-        self.config["geometry"] = ove_handler.get_geometry(self.config["space"])
-        ove_handler.clear_space(self.config["space"])
+        self.handler = RequestHandler(self.config["mode"], self.config["core"], self.config["observatory"],
+                                      self.config["username"], self.config["password"])
+        self.config["geometry"] = self.handler.get_geometry()
+        self.config["bounds"] = self.handler.get_bounds()
+        self.config["renderer"] = self.handler.renderer
+        self.config["project_id"] = str(uuid.uuid4()).replace("-", "")
+        self.handler.clear_space()
         FileHandler().load_dir(self.config["out"], self.config["remove"])
 
     def tee(self, cell_config: Namespace, outputs: list[list]) -> list[dict]:
         validator = LayoutValidator()
         file_handler = FileHandler()
-        asset_handler = AssetHandler(self.config["out"], f"{self.config['host']}/ove-jupyter/static", file_handler)
+        out = self.config["out"]
+        static = f"{self.config['host']}/ove-jupyter/static"
+        asset_handler = AssetHandler(out, static, file_handler)
         output_formatter = OutputFormatter(file_handler, asset_handler)
 
         display_type = validator.validate(cell_config)
-        geometry = Geometry(cell_config, display_type, self.config["geometry"], self.config["rows"], self.config["cols"], cell_config.split)
+        geometry = Geometry(cell_config, display_type, self.config["geometry"], self.config["bounds"], len(outputs))
 
         controller_urls = []
 
         for output_idx, output in enumerate(outputs):
             idx, data_type, data, metadata = output
             data_type = DataType(data_type)
-            section = SectionBuilder(
-                self.config["core"], asset_handler, output_formatter).build_section(data, geometry, cell_config.cell_no, output_idx, len(outputs), self.config["space"], data_type, metadata)
+            section_builder = SectionBuilder(self.config["renderer"], asset_handler, output_formatter)
+            layout = section_builder.build_section(data, geometry, self.config["geometry"], cell_config.cell_no,
+                                                   output_idx, data_type, metadata, self.config["project_id"])
+            section = section_builder.convert_section(layout, self.config["geometry"], self.config["observatory"],
+                                                      data_type)
 
-            section_id = RequestHandler(self.config["mode"], self.config["core"]).load_section(
-                cell_config.cell_no, output_idx, section, self.config["sections"])
+            section_id = self.handler.load_section(cell_config.cell_no, output_idx, section, self.config["sections"])
             self.config["sections"][f"{cell_config.cell_no}-{output_idx}"] = {
                 "id": section_id,
-                "data": section
+                "data": layout
             }
 
             if not self.config["multi_controller"]:
                 controller_urls.append(
                     {"idx": idx, "url": f"{section['app']['url']}/control.html?oveSectionId={section_id}"})
 
-        project = output_formatter.format_project(self.config["sections"], self.config["space"])
-        file_handler.write_json(project, filename=f"{self.config['out']}/project.json")
-
         if self.config["mode"] == Mode.DEVELOPMENT:
-            overview = output_formatter.format_overview(self.config["space"],
-                                                        f"{self.config['host']}/ove-jupyter/static",
-                                                        self.config["core"])
+            overview = output_formatter.format_overview(self.config["observatory"],
+                                                        self.config["bounds"],
+                                                        [x["data"] for x in self.config["sections"].values()])
             file_handler.to_file(overview, filename=f"{self.config['out']}/overview.html", file_mode="w")
 
         if self.config["multi_controller"]:
-            ControllerBuilder(self.config["out"], file_handler).generate_controller(self.config["sections"], self.config["core"], self.config["mode"].value)
+            controller = self.handler.get_controller([v["data"] for v in self.config["sections"].values()],
+                                                     self.config["project_id"])
+            file_handler.to_file(controller, filename=f"{self.config['out']}/control.html", file_mode="w")
 
         return controller_urls

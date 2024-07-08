@@ -16,7 +16,7 @@ class OVEApp(Enum):
 
     @classmethod
     def from_data_type(cls, data_type: DataType):
-        if data_type == DataType.HTML or data_type == DataType.DATAFRAME or data_type == DataType.LATEX or data_type == DataType.MARKDOWN or data_type == DataType.JSON:
+        if data_type == DataType.HTML or data_type == DataType.DATATABLE or data_type == DataType.LATEX or data_type == DataType.MARKDOWN or data_type == DataType.JSON:
             return cls.HTML
         elif data_type == DataType.PNG or data_type == DataType.JPEG:
             return cls.IMAGES
