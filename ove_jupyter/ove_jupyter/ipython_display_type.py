@@ -56,7 +56,7 @@ def to_data_type(display_mode: typing.Optional[IPythonDisplayType], output_type:
             display_mode == IPythonDisplayType.VIDEOS or display_mode == IPythonDisplayType.YOUTUBE) and "text/html" in output_type:
         return DataType.VIDEO
     elif "text/html" in output_type:
-        return DataType.DATAFRAME if "dataframe" in data else DataType.HTML
+        return DataType.DATATABLE if "dataframe" in data else DataType.HTML
     elif "image/png" in output_type:
         return DataType.PNG
     elif "image/jpeg" in output_type:

@@ -5,11 +5,11 @@ import typing
 from markdown import markdown
 from IPython.lib.latextools import latex_to_html
 
-from .locks import LATEX_LOCK
 from .data_type import DataType
 from .file_handler import FileHandler
 from .utils import get_dir, get_source
 from .asset_handler import AssetHandler
+from .locks import LATEX_LOCK, MARKDOWN_LOCK
 
 
 class OutputFormatter:
@@ -30,9 +30,10 @@ class OutputFormatter:
         return outline.replace("%%replace%%", json.dumps(obj, indent=4))
 
     def format_markdown(self, md: str) -> str:
-        self.asset_handler.handle_markdown_css()
-        outline = self.file_handler.read_file(f"{get_dir()}/assets/markdown_format.html")
-        return outline.replace("%%replace%%", markdown(md))
+        with MARKDOWN_LOCK:
+            self.asset_handler.handle_markdown_css()
+            outline = self.file_handler.read_file(f"{get_dir()}/assets/markdown_format.html")
+            return outline.replace("%%replace%%", markdown(md))
 
     def format_dataframe(self, html: str) -> str:
         html = html.replace("border=\"1\" ", "").replace(" style=\"text-align: right;\"", "")
@@ -57,22 +58,20 @@ class OutputFormatter:
         outline = self.file_handler.read_file(f"{get_dir()}/assets/html_format.html")
         return outline.replace("%%replace%%", html)
 
-    def format_project(self, sections: list[dict], space: str) -> dict:
-        outline = self.file_handler.read_file(f"{get_dir()}/assets/project.json")
-        return json.loads(outline.replace("%%space%%", space).replace("%%sections%%", json.dumps(
-            [section["data"] for section in sections.values()])))
-
-    def format_overview(self, space: str, host: str, core: str):
+    def format_overview(self, observatory: str, bounds: dict, sections: list) -> str:
         outline = self.file_handler.read_file(f"{get_dir()}/assets/overview.html")
-        return outline.replace("%%space%%", space).replace(
-            "%%sections%%", f"{host}/project.json").replace("%%spaces%%", f"{core}/spaces")
+        outline = outline.replace("const observatoryName = "";", f"const observatoryName = {observatory};")
+        outline = outline.replace("const observatory = {};", f"const observatory = {json.dumps(bounds, indent=2)};")
+        outline = outline.replace("const sections = [];",
+                                  f"const sections = {json.dumps(sections, indent=2)};")
+        return outline
 
     def format_data(self, data: str, data_type: DataType, metadata: dict) -> str:
         if data_type == DataType.AUDIO:
             return get_source(data)
         elif data_type == DataType.VIDEO:
             return get_source(data)
-        elif data_type == DataType.DATAFRAME:
+        elif data_type == DataType.DATATABLE:
             return self.format_dataframe(data)
         elif data_type == DataType.HTML:
             return self.format_html(data)

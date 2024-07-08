@@ -43,9 +43,7 @@ def xorExist(a: typing.Optional[typing.Any], b: typing.Optional[typing.Any]):
 
 def load_base_config(args: dict) -> dict:
     config = {
-        "space": args.space.replace("\"", ""),
-        "rows": args.rows,
-        "cols": args.cols,
+        "observatory": args.observatory.replace("\"", ""),
         "env": args.env.replace("\"", ""),
         "out": args.out.replace("\"", ""),
         "sections": {},
@@ -53,4 +51,8 @@ def load_base_config(args: dict) -> dict:
         "multi_controller": args.multi_controller,
         "remove": args.remove
     }
+    # OVE_NEXT_CORE
+    # OVE_USERNAME
+    # OVE_PASSWORD
+    # OVE_HOST
     return {**{k[4:].lower(): v for k, v in dotenv_values(config["env"]).items() if "OVE_" in k}, **config}

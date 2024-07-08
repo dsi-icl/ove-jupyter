@@ -1,256 +1,209 @@
 <!doctype html>
-<!--suppress JSUnresolvedReference -->
 <html lang='en'>
 
 <head>
-    <title>OVE Core</title>
-    <link rel='shortcut icon' href='#'>
+  <title>ove-jupyter overview</title>
+  <link rel='shortcut icon' href='#'>
+  <style>
+      .markdown-body {
+          background-color: white;
+          display: flex;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+          flex-direction: column;
+          align-items: center;
+      }
 
-    <link rel='stylesheet' href='markdown-github.css'>
-    <style>
-        .markdown-body {
-            background-color:white;
-            min-width: 200px;
-            max-width: 980px;
-            margin: 0 auto;
-            padding: 45px;
-        }
+      .markdown-body table td, .markdown-body table th {
+          border: none;
+      }
 
-        .markdown-body table td, .markdown-body table th {
-            border: none;
-        }
+      .dataTables_paginate, .dataTables_info, .dataTables_length {
+          font-size: 12px;
+      }
 
-        @media (max-width: 767px) {
-            .markdown-body {
-                padding: 15px;
-            }
-        }
+      .dataTables_length {
+          padding-top: 0.5em;
+      }
 
-        .dataTables_paginate, .dataTables_info, .dataTables_length {
-            font-size: 12px;
-        }
+      .client {
+          fill: lightgrey;
+          stroke: black;
+          stroke-width: 1px;
+      }
 
-        .dataTables_length {
-            padding-top: 0.5em;
-        }
+      #sections {
+          width: calc(100% - 100px);
+      }
 
-        .client {
-            fill: lightgrey;
-            stroke: black;
-            stroke-width: 1px;
-        }
+      .section {
+          stroke: none;
+          opacity: 0.7;
+          stroke-width: 0;
+      }
 
-        .section {
-            stroke: none;
-            opacity: 0.7;
-            stroke-width: 0;
-        }
+      .section-label, .space-label {
+          fill: white;
+      }
 
-        .section-label, .space-label {
-            fill: white;
-        }
+  </style>
 
-    </style>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.4/d3.min.js'></script>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.js'></script>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js'></script>
 
-    <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.4/d3.min.js'></script>
-    <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.js'></script>
-    <script src='https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js'></script>
+  <link rel="stylesheet" type="text/css"
+        href="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/css/jquery.dataTables.min.css">
+  <script>
+      const observatoryName = "";
+      const observatory = {};
+      const sections = [];
 
-    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/css/jquery.dataTables.min.css">
-    <script>
-        function getScaleForSpace(geometry, width, height) {
-            // Pick a scale which will scale the bounding-box of the screens in this space to fit
-            const xMax = d3.max(geometry.map(function (m) {
-                return m.x + m.w;
-            }));
-            const yMax = d3.max(geometry.map(function (m) {
-                return m.y + m.h;
-            }));
+      const loadState = () => {
+          $.fn.dataTable.ext.errMode = 'none';
+          drawSpace();
+          tabulateSections();
+      };
 
-            return Math.max((yMax / height), (xMax / width));
-        }
+      const drawSpace = () => {
+          const margin = 50;
+          const width = window.innerWidth - 2 * margin;
+          const height = window.innerHeight - 2 * margin;
 
-        let space = "%%space%%";
-        let spaces;
-        let sections;
+          d3.selectAll('#observatory>div').remove();
 
-        function loadState() {
-            $.fn.dataTable.ext.errMode = 'none';
-            fetch("%%spaces%%").then(res => res.json()).then(data => {
-                spaces = data;
-                fetch("%%sections%%").then(res => res.json()).then(data => {
-                    sections = data["Sections"].map((s, i) => ({...s, id: i}));
-                    displayState();
-                });
-            });
-        }
-        function displayState() {
-            if (spaces && sections) {
-                drawSpaces(spaces, sections);
-                tabulateSections(spaces, sections)
-            }
-        }
+          let spaceNames = observatoryName;
 
-        function drawSpaces(spaces, sections) {
-            const margin = 50;
-            const width = Math.min(767, window.innerWidth - 2 * margin);
-            const height = Math.min(767, window.innerHeight - 2 * margin);
+          let scaleFactor = Math.max((observatory["height"] / height), (observatory["width"] / width));
 
-            d3.selectAll('#spaces>div').remove();
+          let x = d3.scaleLinear().range([0, width]).domain([0, width * scaleFactor]);
+          let y = d3.scaleLinear().range([0, height]).domain([0, height * scaleFactor]);
 
-            let spaceNames = Object.keys(spaces).filter(name => name === space);
+          let divs = d3.select('#observatory')
+              .selectAll('div')
+              .data([spaceNames])
+              .enter()
+              .append('div');
 
-            let scaleFactor = d3.max(spaceNames.map(name => getScaleForSpace(spaces[name], width, height)));
+          divs.append('h3').html(d => `${d}`);
 
-            let x = d3.scaleLinear().range([0, width]).domain([0, width * scaleFactor]);
-            let y = d3.scaleLinear().range([0, height]).domain([0, height * scaleFactor]);
+          // Create an SVG for each space, setting width and height separately
+          let svgs = divs.append('svg')
+              .attr('width', () => x(observatory["width"]))
+              .attr('height', () => y(observatory["height"]));
+          const cells = Array.from({length: observatory["columns"] * observatory["rows"]}, (_x, i) => i);
+          const cellWidth = observatory["width"] / observatory["columns"];
+          const cellHeight = observatory["height"] / observatory["rows"];
 
-            let divs = d3.select('#spaces')
-                .selectAll('div')
-                .data(spaceNames)
-                .enter()
-                .append('div');
+          svgs.selectAll('rect')
+              .data(() => cells)
+              .enter()
+              .append('rect')
+              .attr('x', (_d, i) => x(cellWidth * (i % observatory["columns"])))
+              .attr('y', (_d, i) => y(cellHeight * (Math.floor(i / observatory["columns"]))))
+              .attr('width', () => x(cellWidth))
+              .attr('height', () => y(cellHeight))
+              .classed('client', true)
+              .append('title')
+              .text((_d, i) => 'Client Id: ' + i);
 
-            divs.append('h3').html(d => `${d}`);
+          const cellTextSize = Math.min(cellHeight, cellWidth) / 4;
+          svgs.selectAll('.space-label')
+              .data(() => cells)
+              .enter()
+              .append('text')
+              .text((_d, i) => i)
+              .attr('x', (_d, i) => (x(cellWidth * (i % observatory["columns"]) + cellWidth / 2) - cellTextSize * 0.25))
+              .attr('y', (_d, i) => (y(cellHeight * (Math.floor(i / observatory["columns"])) + cellHeight / 2) + cellTextSize * 0.5))
+              .style('font-size', cellTextSize + 'px')
+              .classed('space-label', true);
 
-            // Create an SVG for each space, setting width and height separately
-            let svgs = divs.append('svg')
-                .attr('width', d => d3.max(spaces[d].map(m => x(m.x + m.w))))
-                .attr('height', d => d3.max(spaces[d].map(m => y(m.y + m.h))));
+          const colors = ['dodgerblue', 'crimson', 'darkorange', 'darkviolet', '#4daf4a'];
+          svgs.selectAll('.sections')
+              .data(() => sections)
+              .enter()
+              .append('rect')
+              .attr('x', d => x(d.x * observatory["width"]))
+              .attr('y', d => y(d.y * observatory["height"]))
+              .attr('width', d => x(d.width * observatory["width"]))
+              .attr('height', d => y(d.height * observatory["height"]))
+              .style('fill', (_d, i) => colors[i % colors.length])
+              .classed('section', true)
+              .append('title')
+              .text((_d, i) => 'Section Id: ' + i);
 
-            svgs.selectAll('rect')
-                .data(d => spaces[d])
-                .enter()
-                .append('rect')
-                .attr('x', d => x(d.x))
-                .attr('y', d => y(d.y))
-                .attr('width', d => x(d.w))
-                .attr('height', d => x(d.h))
-                .classed('client', true)
-                .append('title')
-                .text((d, i) => 'Client Id: ' + i);
+          const minSectionHeight = d3.min(sections.map(d => y(d.height * observatory["height"])));
+          const minSectionWidth = d3.min(sections.map(d => x(d.width * observatory["width"])));
+          const sectionTextSize = Math.min(minSectionHeight, minSectionWidth) / 4;
+          svgs.selectAll('.section-label')
+              .data(() => sections)
+              .enter()
+              .append('text')
+              .text((_d, i) => i)
+              .attr('x', d => (x((d.x + d.width / 2) * observatory["width"]) - sectionTextSize * 0.25))
+              .attr('y', d => (y((d.y + d.height / 2) * observatory["height"]) + sectionTextSize * 0.5))
+              .style('font-size', sectionTextSize + 'px')
+              .classed('section-label', true);
+      };
 
-            const minClientHeight = d3.min(Object.values(spaces).map(s => d3.min(s.map( d => x(d.h)))));
-            const minClientWidth = d3.min(Object.values(spaces).map(s => d3.min(s.map( d => x(d.w)))));
-            const clientTextSize = Math.min(minClientHeight, minClientWidth) / 4;
-            svgs.selectAll('.space-label')
-                .data(d => spaces[d])
-                .enter()
-                .append('text')
-                .text((d,i) => i)
-                .attr('x', d => (x((+d.x) + (+d.w)/2) - clientTextSize*0.25))
-                .attr('y', d => (y((+d.y) + (+d.h)/2) + clientTextSize*0.5))
-                .style('font-size', clientTextSize + 'px')
-                .classed('space-label', true);
+      const tabulateSections = () => {
+          const appNames = sections.map(({dataType}) => dataType);
+          createSectionsTables(appNames);
+      };
 
-            const colors = ['dodgerblue', 'crimson', 'darkorange', 'darkviolet', '#4daf4a'];
-            svgs.selectAll('.sections')
-                .data(d => sections.filter(s => (s.space === d)))
-                .enter()
-                .append('rect')
-                .attr('x', d => x(d.x))
-                .attr('y', d => y(d.y))
-                .attr('width', d => x(d.w))
-                .attr('height', d => y(d.h))
-                .style('fill', (d,i) => colors[i % colors.length])
-                .classed('section', true)
-                .append('title')
-                .text(d => 'Section Id: ' + d.id);
+      function createSectionsTables(appNames) {
+          let spaceNames = [observatoryName];
 
-            const minSectionHeight = d3.min(sections.map( d => x(d.h)));
-            const minSectionWidth = d3.min(sections.map( d => x(d.w)));
-            const sectionTextSize = Math.min(minSectionHeight, minSectionWidth) / 4;
-            svgs.selectAll('.section-label')
-                .data(d => sections.filter(s => (s.space === d)))
-                .enter()
-                .append('text')
-                .text(d => d.id)
-                .attr('x', d => (x((+d.x) + (+d.w)/2) - sectionTextSize*0.25))
-                .attr('y', d => (y((+d.y) + (+d.h)/2) + sectionTextSize*0.5))
-                .style('font-size', sectionTextSize + 'px')
-                .classed('section-label', true);
-        }
+          let divs = d3.select('#sections')
+              .selectAll('div')
+              .data(spaceNames)
+              .enter();
 
-        function tabulateSections(spaces, sections){
-            const appURLs = [...new Set(sections.map(d => !d.app ? '' : d.app.url))];
-            let urlsToProcess = appURLs.length;
-            let appNames = {};
+          const blocks = divs.append('div');
 
-            appURLs.map(url => {
-                d3.json(url + '/name')
-                    .then( name => {
-                        appNames[url] = name.charAt(0).toUpperCase() + name.substring(1);
-                        urlsToProcess--;
+          blocks.append('h3').text(d => d);
 
-                        if (urlsToProcess === 0){
-                            createSectionsTables(spaces, sections, appNames);
-                        }
-                    }, () => {
-                        appNames[url] = url;
-                        urlsToProcess--;
+          const columns = ['id', 'x', 'y', 'width', 'height', 'data type'];
 
-                        if (urlsToProcess === 0){
-                            createSectionsTables(spaces, sections, appNames);
-                        }
-                    });
-            });
-        }
+          const convert = (d, i) => [
+              i,
+              `${(d.x * 100).toFixed(2)}%`,
+              `${(d.y * 100).toFixed(2)}%`,
+              `${(d.width * 100).toFixed(2)}%`,
+              `${(d.height * 100).toFixed(2)}%`,
+              appNames[i]
+          ];
 
-        function createSectionsTables(spaces, sections, appNames) {
-            let spaceNames = Object.keys(spaces)
-                .filter(space => sections.filter(section => (section.space === space)).length > 0);
+          const tables = blocks.append('table')
+              .attr('class', 'dataTable display cell-border no-footer')
+              .attr('style', 'display:table')
+              .attr('id', d => `section-table-${d}`);
 
-            let divs = d3.select('#sections')
-                .selectAll('div')
-                .data(spaceNames)
-                .enter();
+          tables.append("thead")
+              .selectAll("th")
+              .data(columns)
+              .enter("th")
+              .text(d => d);
+          tables.append("tbody");
 
-            const blocks = divs.append('div');
+          spaceNames.map(spaceName => {
+              const values = sections.map(convert);
 
-            blocks.append('h3').text(d => d);
-
-            const columns = ['Id', 'x', 'y', 'Width', 'Height', 'App'];
-
-            const convert = d => [
-                d.id,
-                d.x,
-                d.y,
-                d.w,
-                d.h,
-                appNames[d.app.url]
-            ];
-
-            const tables = blocks.append('table')
-                .attr('class', 'dataTable display cell-border no-footer')
-                .attr('style', 'display:table')
-                .attr('id', d => `section-table-${d}`);
-
-            tables.append("thead")
-                .selectAll("th")
-                .data(columns)
-                .enter("th")
-                .text(d => d);
-            tables.append("tbody");
-
-            spaceNames.map(spaceName => {
-                const values = sections.filter(s => (s.space === spaceName)).map(convert);
-
-                $(`#section-table-${spaceName}`).DataTable({
-                    data: values,
-                    columns: columns.map(d => ({title: d}))
-                });
-            });
-        }
-    </script>
+              $(`#section-table-${spaceName}`).DataTable({
+                  data: values,
+                  columns: columns.map(d => ({title: d}))
+              });
+          });
+      }
+  </script>
 
 </head>
-    <body class='markdown-body' onload='loadState()' onresize='loadState()'>
-    <h2>Sections</h2>
-    <div id='sections'></div>
+<body class='markdown-body' onload='loadState()' onresize='loadState()'>
+<h2>Sections</h2>
+<div id='sections'></div>
 
 
-    <h2>Space Layouts</h2>
-    <div id='spaces'></div>
+<h2>Layout Preview</h2>
+<div id='observatory'></div>
 
 </body>
 

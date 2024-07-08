@@ -8,11 +8,9 @@ define([
     'base/js/dialog'
 ], ($, Jupyter, oa, dt, dialog) => {
     const global_config = Jupyter.notebook.metadata.ove_jupyter || {
-        rows: 2,
-        cols: 2,
-        space: "LocalFour",
+        observatory: "do",
         mode: "production",
-        multi_controller: false,
+        multi_controller: true,
         remove: true,
         out: ".ove",
         env: ".env"
@@ -28,8 +26,7 @@ define([
             x: null,
             y: null,
             from: null,
-            to: null,
-            split: null,
+            to: null
         }, undefined, 4);
         const modal = dialog.modal({
             show: false,
@@ -215,7 +212,7 @@ define([
                 const formatted_outputs = format_outputs(outputs);
                 tee_handler(metadata, formatted_outputs).catch(console.error);
             } catch (e) {
-                console.log(e);
+                console.error(e);
             }
         });
 
