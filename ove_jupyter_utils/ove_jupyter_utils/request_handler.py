@@ -9,8 +9,10 @@ class RequestHandler:
         self.mode = mode
         self.host = host
 
-    def _get(self, url: str) -> typing.Any:
-        return requests.get(f"{self.host}/{url}").json()
+    def _get(self, url: str, default: typing.Any = None) -> typing.Any:
+        if self.mode == Mode.PRODUCTION:
+            return requests.get(f"{self.host}/{url}").json()
+        return default
 
     def _delete(self, url: str) -> None:
         if self.mode == Mode.PRODUCTION:
@@ -34,7 +36,7 @@ class RequestHandler:
         return len(sections) if section_id is None else section_id["id"]
 
     def get_geometry(self, space: str) -> dict:
-        geometry = self._get(f"spaces/{space}/geometry")
+        geometry = self._get(f"spaces/{space}/geometry", default={"w": 30720, "h": 4320})
         return geometry
 
     def clear_space(self, space: str) -> None:

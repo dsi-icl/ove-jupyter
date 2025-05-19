@@ -16,9 +16,10 @@ class DataType(Enum):
     PNG = "png"
     SVG = "svg"
     VIDEO = "videos"
+    WIDGET = "widget"
 
     def get_file_extension(self):
-        if self == DataType.LATEX or self == DataType.MARKDOWN or self == DataType.HTML or self == DataType.DATAFRAME or self == DataType.JSON:
+        if self == DataType.LATEX or self == DataType.MARKDOWN or self == DataType.HTML or self == DataType.DATAFRAME or self == DataType.JSON or self == DataType.WIDGET:
             return "html"
         elif self == DataType.GEOJSON:
             return "json"

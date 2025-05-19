@@ -28,7 +28,7 @@ class OVEHandler:
     def tee(self, cell_config: Namespace, outputs: list[list]) -> list[dict]:
         validator = LayoutValidator()
         file_handler = FileHandler()
-        asset_handler = AssetHandler(self.config["out"], f"{self.config['host']}/ove-jupyter/static", file_handler)
+        asset_handler = AssetHandler(self.config["out"], f"{self.config['host']}", file_handler)
         output_formatter = OutputFormatter(file_handler, asset_handler)
 
         display_type = validator.validate(cell_config)
@@ -58,7 +58,7 @@ class OVEHandler:
 
         if self.config["mode"] == Mode.DEVELOPMENT:
             overview = output_formatter.format_overview(self.config["space"],
-                                                        f"{self.config['host']}/ove-jupyter/static",
+                                                        f"{self.config['host']}",
                                                         self.config["core"])
             file_handler.to_file(overview, filename=f"{self.config['out']}/overview.html", file_mode="w")
 

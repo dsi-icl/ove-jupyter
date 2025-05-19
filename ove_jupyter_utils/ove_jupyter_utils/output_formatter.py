@@ -3,6 +3,7 @@ import json
 import typing
 
 from markdown import markdown
+from ipywidgets import Widget
 from IPython.lib.latextools import latex_to_html
 
 from .locks import LATEX_LOCK
@@ -63,9 +64,39 @@ class OutputFormatter:
             [section["data"] for section in sections.values()])))
 
     def format_overview(self, space: str, host: str, core: str):
+        self.asset_handler.handle_markdown_css()
         outline = self.file_handler.read_file(f"{get_dir()}/assets/overview.html")
         return outline.replace("%%space%%", space).replace(
             "%%sections%%", f"{host}/project.json").replace("%%spaces%%", f"{core}/spaces")
+
+    def format_widget(self, widget_state: str) -> str:
+        return f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Jupyter Widget</title>
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"
+  integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA="
+  crossorigin="anonymous">
+</script>
+
+<script
+  data-jupyter-widgets-cdn="https://unpkg.com/"
+  data-jupyter-widgets-cdn-only
+  src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@*/dist/embed-amd.js"
+  crossorigin="anonymous">
+</script>
+
+<script type="application/vnd.jupyter.widget-state+json">
+  {json.dumps(Widget.get_manager_state())}
+</script>
+</head>
+<body>
+<script type="application/vnd.jupyter.widget-view+json">{json.dumps(widget_state)}</script>
+</body>
+</html>
+        """
 
     def format_data(self, data: str, data_type: DataType, metadata: dict) -> str:
         if data_type == DataType.AUDIO:
@@ -84,5 +115,7 @@ class OutputFormatter:
             return self.format_dict(data)
         elif data_type == DataType.GEOJSON:
             return self.format_geojson(data, metadata)
+        elif data_type == DataType.WIDGET:
+            return self.format_widget(data)
         else:
             return data

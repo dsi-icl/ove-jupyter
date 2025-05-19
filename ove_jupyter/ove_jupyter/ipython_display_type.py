@@ -73,6 +73,8 @@ def to_data_type(display_mode: typing.Optional[IPythonDisplayType], output_type:
         return DataType.GEOJSON
     elif "text/plain" in output_type:
         return None
+    elif "application/vnd.jupyter.widget-view+json" in output_type:
+        return DataType.WIDGET
     else:
         print(f"Unhandled data type: {output_type}")
         return None

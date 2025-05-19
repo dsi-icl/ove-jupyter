@@ -9,7 +9,7 @@
     <link rel='stylesheet' href='markdown-github.css'>
     <style>
         .markdown-body {
-            background-color:white;
+            background-color: white;
             min-width: 200px;
             max-width: 980px;
             margin: 0 auto;
@@ -56,7 +56,8 @@
     <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.js'></script>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js'></script>
 
-    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" type="text/css"
+          href="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/css/jquery.dataTables.min.css">
     <script>
         function getScaleForSpace(geometry, width, height) {
             // Pick a scale which will scale the bounding-box of the screens in this space to fit
@@ -71,19 +72,88 @@
         }
 
         let space = "%%space%%";
-        let spaces;
+        let spaces = {
+            DOCluster: [
+                {"x": 0, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 0, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 1920, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 3840, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 5760, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 7680, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 9600, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 11520, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 13440, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 15360, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 17280, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 19200, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 21120, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 23040, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 24960, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 26880, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 28800, "y": 3240, "w": 1920, "h": 1080},
+                {"x": 0, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 1920, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 3840, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 5760, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 7680, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 9600, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 11520, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 13440, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 15360, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 17280, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 19200, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 21120, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 23040, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 24960, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 26880, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 28800, "y": 2160, "w": 1920, "h": 1080},
+                {"x": 0, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 1920, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 3840, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 5760, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 7680, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 9600, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 11520, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 13440, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 15360, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 17280, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 19200, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 21120, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 23040, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 24960, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 26880, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 28800, "y": 1080, "w": 1920, "h": 1080},
+                {"x": 0, "y": 0, "w": 1920, "h": 1080},
+                {"x": 1920, "y": 0, "w": 1920, "h": 1080},
+                {"x": 3840, "y": 0, "w": 1920, "h": 1080},
+                {"x": 5760, "y": 0, "w": 1920, "h": 1080},
+                {"x": 7680, "y": 0, "w": 1920, "h": 1080},
+                {"x": 9600, "y": 0, "w": 1920, "h": 1080},
+                {"x": 11520, "y": 0, "w": 1920, "h": 1080},
+                {"x": 13440, "y": 0, "w": 1920, "h": 1080},
+                {"x": 15360, "y": 0, "w": 1920, "h": 1080},
+                {"x": 17280, "y": 0, "w": 1920, "h": 1080},
+                {"x": 19200, "y": 0, "w": 1920, "h": 1080},
+                {"x": 21120, "y": 0, "w": 1920, "h": 1080},
+                {"x": 23040, "y": 0, "w": 1920, "h": 1080},
+                {"x": 24960, "y": 0, "w": 1920, "h": 1080},
+                {"x": 26880, "y": 0, "w": 1920, "h": 1080},
+                {"x": 28800, "y": 0, "w": 1920, "h": 1080}
+            ]
+        };
         let sections;
 
         function loadState() {
             $.fn.dataTable.ext.errMode = 'none';
-            fetch("%%spaces%%").then(res => res.json()).then(data => {
-                spaces = data;
-                fetch("%%sections%%").then(res => res.json()).then(data => {
-                    sections = data["Sections"].map((s, i) => ({...s, id: i}));
-                    displayState();
-                });
+            // fetch("%%spaces%%").then(res => res.json()).then(data => {
+            //     spaces = data;
+            fetch("%%sections%%").then(res => res.json()).then(data => {
+                sections = data["Sections"].map((s, i) => ({...s, id: i}));
+                displayState();
             });
+            // });
         }
+
         function displayState() {
             if (spaces && sections) {
                 drawSpaces(spaces, sections);
@@ -130,16 +200,16 @@
                 .append('title')
                 .text((d, i) => 'Client Id: ' + i);
 
-            const minClientHeight = d3.min(Object.values(spaces).map(s => d3.min(s.map( d => x(d.h)))));
-            const minClientWidth = d3.min(Object.values(spaces).map(s => d3.min(s.map( d => x(d.w)))));
+            const minClientHeight = d3.min(Object.values(spaces).map(s => d3.min(s.map(d => x(d.h)))));
+            const minClientWidth = d3.min(Object.values(spaces).map(s => d3.min(s.map(d => x(d.w)))));
             const clientTextSize = Math.min(minClientHeight, minClientWidth) / 4;
             svgs.selectAll('.space-label')
                 .data(d => spaces[d])
                 .enter()
                 .append('text')
-                .text((d,i) => i)
-                .attr('x', d => (x((+d.x) + (+d.w)/2) - clientTextSize*0.25))
-                .attr('y', d => (y((+d.y) + (+d.h)/2) + clientTextSize*0.5))
+                .text((d, i) => i)
+                .attr('x', d => (x((+d.x) + (+d.w) / 2) - clientTextSize * 0.25))
+                .attr('y', d => (y((+d.y) + (+d.h) / 2) + clientTextSize * 0.5))
                 .style('font-size', clientTextSize + 'px')
                 .classed('space-label', true);
 
@@ -152,44 +222,44 @@
                 .attr('y', d => y(d.y))
                 .attr('width', d => x(d.w))
                 .attr('height', d => y(d.h))
-                .style('fill', (d,i) => colors[i % colors.length])
+                .style('fill', (d, i) => colors[i % colors.length])
                 .classed('section', true)
                 .append('title')
                 .text(d => 'Section Id: ' + d.id);
 
-            const minSectionHeight = d3.min(sections.map( d => x(d.h)));
-            const minSectionWidth = d3.min(sections.map( d => x(d.w)));
+            const minSectionHeight = d3.min(sections.map(d => x(d.h)));
+            const minSectionWidth = d3.min(sections.map(d => x(d.w)));
             const sectionTextSize = Math.min(minSectionHeight, minSectionWidth) / 4;
             svgs.selectAll('.section-label')
                 .data(d => sections.filter(s => (s.space === d)))
                 .enter()
                 .append('text')
                 .text(d => d.id)
-                .attr('x', d => (x((+d.x) + (+d.w)/2) - sectionTextSize*0.25))
-                .attr('y', d => (y((+d.y) + (+d.h)/2) + sectionTextSize*0.5))
+                .attr('x', d => (x((+d.x) + (+d.w) / 2) - sectionTextSize * 0.25))
+                .attr('y', d => (y((+d.y) + (+d.h) / 2) + sectionTextSize * 0.5))
                 .style('font-size', sectionTextSize + 'px')
                 .classed('section-label', true);
         }
 
-        function tabulateSections(spaces, sections){
+        function tabulateSections(spaces, sections) {
             const appURLs = [...new Set(sections.map(d => !d.app ? '' : d.app.url))];
             let urlsToProcess = appURLs.length;
             let appNames = {};
 
             appURLs.map(url => {
                 d3.json(url + '/name')
-                    .then( name => {
+                    .then(name => {
                         appNames[url] = name.charAt(0).toUpperCase() + name.substring(1);
                         urlsToProcess--;
 
-                        if (urlsToProcess === 0){
+                        if (urlsToProcess === 0) {
                             createSectionsTables(spaces, sections, appNames);
                         }
                     }, () => {
                         appNames[url] = url;
                         urlsToProcess--;
 
-                        if (urlsToProcess === 0){
+                        if (urlsToProcess === 0) {
                             createSectionsTables(spaces, sections, appNames);
                         }
                     });
@@ -244,13 +314,13 @@
     </script>
 
 </head>
-    <body class='markdown-body' onload='loadState()' onresize='loadState()'>
-    <h2>Sections</h2>
-    <div id='sections'></div>
+<body class='markdown-body' onload='loadState()' onresize='loadState()'>
+<h2>Sections</h2>
+<div id='sections'></div>
 
 
-    <h2>Space Layouts</h2>
-    <div id='spaces'></div>
+<h2>Space Layouts</h2>
+<div id='spaces'></div>
 
 </body>
 
